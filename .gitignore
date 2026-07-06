@@ -1,0 +1,17 @@
+# Secrets — never commit. The dashboard doesn't need keys; fetchers read
+# keys.local.json locally or env vars (in CI: GitHub secrets).
+keys.local.json
+
+# Local caches and artifacts (regenerable; panel.pkl is refetched on demand)
+data_cache/
+__pycache__/
+*.pyc
+.DS_Store
+
+# Eval scratch
+research-methodology/evals/
+
+# Internal working documents — the repo is the product, these are the diary
+# (build log + living spec). They stay local; repo docs = README only.
+scratchpad.md
+market-research-agent-spec.md

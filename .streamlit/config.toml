@@ -1,0 +1,10 @@
+# shadcn-style theme: zinc palette, white surface, near-black text.
+[theme]
+base = "light"
+primaryColor = "#18181b"          # zinc-900 (buttons, focus, accents)
+backgroundColor = "#ffffff"
+secondaryBackgroundColor = "#fafafa"  # zinc-50 (sidebar, inputs)
+textColor = "#09090b"             # zinc-950
+
+[server]
+headless = true

@@ -1,0 +1,14 @@
+# Core research pipeline
+pandas
+numpy
+scipy
+scikit-learn
+yfinance
+requests
+
+# Dashboard
+streamlit
+altair
+
+# Agent loop (local / CI runs; not needed by the dashboard itself)
+claude-agent-sdk

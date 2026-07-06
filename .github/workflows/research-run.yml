@@ -1,0 +1,66 @@
+# Remote research runs — fire the agent from anywhere (GitHub web/mobile:
+# Actions tab -> "research run" -> Run workflow), watch results appear on the
+# deployed dashboard as the push lands.
+#
+# Needs one repo secret: ANTHROPIC_API_KEY (console.anthropic.com). CI can't
+# use a Claude Code login, so remote runs bill API credits (~$0.60/iteration
+# observed); the per-iteration budget cap still applies.
+
+name: research run
+
+on:
+  workflow_dispatch:
+    inputs:
+      iterations:
+        description: "research iterations"
+        default: "1"
+        required: true
+      budget_usd:
+        description: "hard USD cap per iteration"
+        default: "5"
+        required: true
+
+# Never two runs at once: they'd race on journal.db commits.
+concurrency:
+  group: research-run
+  cancel-in-progress: false
+
+jobs:
+  research:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          npm install -g @anthropic-ai/claude-code
+
+      - name: Run the research loop
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          FMP_API_KEY: ${{ secrets.FMP_API_KEY }}
+          FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
+          ALPHA_VANTAGE_API_KEY: ${{ secrets.ALPHA_VANTAGE_API_KEY }}
+        run: |
+          python run_phase_c_loop.py \
+            --iterations "${{ inputs.iterations }}" \
+            --budget-usd "${{ inputs.budget_usd }}"
+
+      - name: Commit results back (updates the deployed dashboard)
+        run: |
+          git config user.name "research-bot"
+          git config user.email "actions@github.com"
+          git add journal.db proposals
+          git diff --cached --quiet || git commit -m "research run (CI): update journal + proposals"
+          git push
