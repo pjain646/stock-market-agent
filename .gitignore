@@ -15,3 +15,7 @@ research-methodology/evals/
 # (build log + living spec). They stay local; repo docs = README only.
 scratchpad.md
 market-research-agent-spec.md
+
+# Archived pre-launch test data (journal reset backups) — not functional
+# product code, kept locally as a record only.
+archive/

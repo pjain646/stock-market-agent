@@ -1,9 +1,0 @@
-{
-  "signals_used": [
-    {
-      "signal_name": "pead_sue_decayed",
-      "tested_score": 0.023
-    }
-  ],
-  "n_candidates": 24
-}
