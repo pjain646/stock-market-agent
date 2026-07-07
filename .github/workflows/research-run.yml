@@ -51,7 +51,16 @@ jobs:
           pip install -r requirements.txt
           npm install -g @anthropic-ai/claude-code
 
+      - name: Configure git for automated commits
+        run: |
+          git config user.name "research-bot"
+          git config user.email "actions@github.com"
+
       - name: Run the research loop
+        # --push commits + pushes after EVERY iteration (not once at the end):
+        # a timeout/crash partway through a long batch shouldn't cost every
+        # iteration before it too — the lesson from two failed test runs
+        # tonight, at 10x the stakes for a real multi-iteration campaign.
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           FMP_API_KEY: ${{ secrets.FMP_API_KEY }}
@@ -61,15 +70,13 @@ jobs:
         run: |
           python run_phase_c_loop.py \
             --iterations "${{ inputs.iterations }}" \
-            --budget-usd "${{ inputs.budget_usd }}"
+            --budget-usd "${{ inputs.budget_usd }}" \
+            --push
 
-      - name: Commit results back (updates the deployed dashboard)
+      - name: Final safety-net commit (in case the last push somehow didn't land)
+        if: always()
         run: |
-          git config user.name "research-bot"
-          git config user.email "actions@github.com"
           git add journal.db proposals
-          git diff --cached --quiet || git commit -m "research run (CI): update journal + proposals"
-          # A local push could land while this run was executing; rebase onto
-          # the latest remote before pushing so this doesn't race it.
-          git pull --rebase origin main
-          git push
+          git diff --cached --quiet || git commit -m "research run (CI): final safety-net commit"
+          git pull --rebase origin main || true
+          git push || true

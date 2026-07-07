@@ -423,11 +423,15 @@ def main() -> None:
             except Exception as reflection_error:
                 print(f"  reflection step failed (non-fatal): {reflection_error}")
 
+        # Push after EVERY iteration, not once at the end — a crash/timeout on
+        # iteration 9 of 12 shouldn't cost iterations 1-8 too (learned this the
+        # expensive way tonight: a failed once-at-the-end push discarded two
+        # full paid research sessions).
+        if arguments.push:
+            push_results_to_git()
+
     print("\nJOURNAL:")
     print(journal.journal_markdown())
-
-    if arguments.push:
-        push_results_to_git()
 
 
 def push_results_to_git() -> None:
