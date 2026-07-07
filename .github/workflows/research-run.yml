@@ -69,4 +69,7 @@ jobs:
           git config user.email "actions@github.com"
           git add journal.db proposals
           git diff --cached --quiet || git commit -m "research run (CI): update journal + proposals"
+          # A local push could land while this run was executing; rebase onto
+          # the latest remote before pushing so this doesn't race it.
+          git pull --rebase origin main
           git push
