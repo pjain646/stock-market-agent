@@ -38,7 +38,10 @@ from core.evaluator import compare_models, per_industry_eval, walk_forward_eval 
 
 PANEL_CACHE_PATH = PROJECT_ROOT / "data_cache" / "panel.pkl"
 PROPOSALS_DIR = PROJECT_ROOT / "proposals"
-CANDIDATES_PATH = PROJECT_ROOT / "data_cache" / "candidates.csv"
+# NOT in data_cache/ (that's gitignored, regenerable local cache) — the
+# deployed dashboard needs this file to show real output, so it's tracked,
+# same principle as journal.db and proposals/.
+CANDIDATES_PATH = PROJECT_ROOT / "candidates" / "candidates.csv"
 
 # The contract every proposed feature module must satisfy. This text is shown
 # to the researcher verbatim, and enforced when the module is loaded.

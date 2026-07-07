@@ -1,0 +1,48 @@
+# Refresh today's ranked stock candidates (task #10) remotely — separate from
+# research-run.yml on purpose: a research iteration proposes ONE new signal,
+# ranking combines whatever's ALREADY proven and predicts on live data. Run
+# this after a research campaign (and after the holdout ceremony) to update
+# what the "Stock predictions" tab shows.
+
+name: rank candidates
+
+on:
+  workflow_dispatch: {}
+
+concurrency:
+  group: rank-candidates
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  rank:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Rank candidates
+        env:
+          FMP_API_KEY: ${{ secrets.FMP_API_KEY }}
+          FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
+          ALPHA_VANTAGE_API_KEY: ${{ secrets.ALPHA_VANTAGE_API_KEY }}
+          SEC_CONTACT_EMAIL: ${{ secrets.SEC_CONTACT_EMAIL }}
+        run: python run_phase_c_loop.py --rank-candidates
+
+      - name: Commit results back (updates the deployed dashboard)
+        run: |
+          git config user.name "research-bot"
+          git config user.email "actions@github.com"
+          git add candidates
+          git diff --cached --quiet || git commit -m "rank candidates (CI): refresh live picks"
+          git push

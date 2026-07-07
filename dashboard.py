@@ -286,8 +286,8 @@ with candidates_tab:
     # signals (core/candidates.py, task #10). Reads whatever
     # `python3 run_phase_c_loop.py --rank-candidates` last produced.
     positive_signals = tested[tested["tested_score"] > 0] if not tested.empty else pd.DataFrame()
-    candidates_csv_path = PROJECT_ROOT / "data_cache" / "candidates.csv"
-    candidates_manifest_path = PROJECT_ROOT / "data_cache" / "candidates.manifest.json"
+    candidates_csv_path = PROJECT_ROOT / "candidates" / "candidates.csv"
+    candidates_manifest_path = PROJECT_ROOT / "candidates" / "candidates.manifest.json"
 
     if candidates_csv_path.exists():
         candidate_rows = pd.read_csv(candidates_csv_path)
