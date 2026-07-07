@@ -31,13 +31,14 @@ sys.path.insert(0, str(PROJECT_ROOT / "research-methodology" / "scripts"))
 
 import pandas as pd  # noqa: E402
 
-from core import config, journal  # noqa: E402
+from core import candidates as candidates_module, config, journal  # noqa: E402
 from core.labeling import add_forward_direction_label  # noqa: E402
 from core.splits import assign_time_split  # noqa: E402
 from core.evaluator import compare_models, per_industry_eval, walk_forward_eval  # noqa: E402
 
 PANEL_CACHE_PATH = PROJECT_ROOT / "data_cache" / "panel.pkl"
 PROPOSALS_DIR = PROJECT_ROOT / "proposals"
+CANDIDATES_PATH = PROJECT_ROOT / "data_cache" / "candidates.csv"
 
 # The contract every proposed feature module must satisfy. This text is shown
 # to the researcher verbatim, and enforced when the module is loaded.
@@ -75,6 +76,29 @@ def build_panel(refresh: bool = False) -> pd.DataFrame:
     PANEL_CACHE_PATH.parent.mkdir(exist_ok=True)
     PANEL_CACHE_PATH.write_bytes(pickle.dumps(panel))
     return panel
+
+
+def build_live_panel() -> pd.DataFrame:
+    """Fetch prices through TODAY, for candidate ranking only.
+
+    `build_panel()` uses `config.END`, a fixed historical window — correct for
+    reproducible backtests, wrong for "today's picks" (which would otherwise be
+    stuck on whatever date research happened to freeze). This fetches fresh, up
+    to the actual current date, so the unlabeled tail is genuinely live. No
+    train/validation/holdout split is applied — candidate ranking doesn't need
+    one; only `positive_signals`' feature code and the label's NaN/non-NaN
+    split (labeled = train on it, unlabeled = predict on it) matter here.
+    """
+    import datetime
+
+    from data import fetch_prices
+
+    tickers = config.all_tickers()
+    today = datetime.date.today().isoformat()
+    print(f"fetching {len(tickers)} tickers {config.START}..{today} (live, uncached) ...")
+    panel = fetch_prices(tickers, config.START, today)
+    panel["industry"] = panel["ticker"].map(config.industry_map())
+    return add_forward_direction_label(panel, forward_horizon_days=config.LABEL_HORIZON)
 
 
 def researcher_prompt(iteration: int, journal_history: str) -> str:
@@ -301,6 +325,40 @@ def final_holdout_verdict(panel: pd.DataFrame) -> None:
           f"— GATE 1 {gate}")
 
 
+def rank_stock_candidates(panel: pd.DataFrame) -> None:
+    """Phase D+ (task #10): combine every proven signal into ranked, live picks.
+
+    This is the product's actual output: not "which signals scored well" but
+    "which stocks look good right now, and why." Trains on every labeled row
+    (train+validation+holdout combined — appropriate once holdout has served
+    its one-time testing purpose) and predicts on the live unlabeled tail.
+    """
+    from core.journal import _connect
+
+    with _connect() as connection:
+        signals = candidates_module.positive_signals(connection)
+    if not signals:
+        print("no positive validated signals in the journal yet — nothing to combine")
+        return
+
+    print(f"combining {len(signals)} proven signal(s): "
+          + ", ".join(f"{s['signal_name']} ({s['tested_score']:+.4f})" for s in signals))
+    combined_panel, feature_columns = candidates_module.build_combined_panel(
+        panel, signals, PROJECT_ROOT, load_feature_module
+    )
+    ranked = candidates_module.rank_candidates(
+        combined_panel, feature_columns, half_life_days=config.RECENCY_HALFLIFE_DAYS
+    )
+    if ranked.empty:
+        print("no live (unlabeled) rows with all combined features present — nothing to rank")
+        return
+
+    candidates_module.save_candidates(ranked, signals, CANDIDATES_PATH)
+    print(f"\nTOP CANDIDATES (saved to {CANDIDATES_PATH.relative_to(PROJECT_ROOT)}):")
+    print(ranked[["ticker", "date", "predicted_up_probability", "top_driver"]].head(10)
+          .to_string(index=False))
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--iterations", type=int, default=2,
@@ -311,11 +369,18 @@ def main() -> None:
                         help="refetch the price panel instead of using the disk cache")
     parser.add_argument("--final-verdict", action="store_true",
                         help="open the sealed holdout ONCE for the best journal signal (end of run)")
+    parser.add_argument("--rank-candidates", action="store_true",
+                        help="combine all proven signals into ranked, live stock candidates")
     parser.add_argument("--push", action="store_true",
                         help="git commit + push journal/proposals after the run (updates the deployed dashboard)")
     arguments = parser.parse_args()
 
     journal.init_journal()
+
+    if arguments.rank_candidates:
+        rank_stock_candidates(build_live_panel())
+        return
+
     panel = build_panel(refresh=arguments.refresh_data)
     print(f"panel ready: {len(panel)} rows, {panel['ticker'].nunique()} tickers")
 

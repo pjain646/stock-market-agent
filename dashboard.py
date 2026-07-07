@@ -283,25 +283,63 @@ with signals_tab:
 
 with candidates_tab:
     # The product's actual output: per-stock predictions from COMBINED proven
-    # signals. Lights up after the first real research run (task #10) — until
-    # then, an honest empty state explaining what will appear here.
+    # signals (core/candidates.py, task #10). Reads whatever
+    # `python3 run_phase_c_loop.py --rank-candidates` last produced.
     positive_signals = tested[tested["tested_score"] > 0] if not tested.empty else pd.DataFrame()
-    st.markdown('<div class="sc-label">Today\'s ranked stock predictions</div>', unsafe_allow_html=True)
-    st.markdown(
-        f'<div class="sc-card">'
-        f'<strong>Not live yet — this is where the research pays off.</strong>'
-        f'<div class="sc-sub" style="margin-top:.5rem; line-height:1.6">'
-        f'After the full research run, every signal that proved out gets combined into one '
-        f'model (weights learned from data, never hand-picked). That model predicts on the '
-        f'most recent ~21 days of data — the rows deliberately kept unlabeled because their '
-        f'future hasn\'t happened yet — and this tab becomes a ranked list: '
-        f'<strong>ticker · P(up over next 21 trading days) · which signals are driving it</strong>.'
-        f'<br><br>Signals eligible so far: '
-        f'{", ".join(positive_signals["signal_name"]) if not positive_signals.empty else "none yet"} '
-        f'({len(positive_signals)} positive out of {len(tested)} tested — the research run needs to '
-        f'widen this pool before combining is meaningful).</div></div>',
-        unsafe_allow_html=True,
-    )
+    candidates_csv_path = PROJECT_ROOT / "data_cache" / "candidates.csv"
+    candidates_manifest_path = PROJECT_ROOT / "data_cache" / "candidates.manifest.json"
+
+    if candidates_csv_path.exists():
+        candidate_rows = pd.read_csv(candidates_csv_path)
+        manifest = (json.loads(candidates_manifest_path.read_text())
+                   if candidates_manifest_path.exists() else {})
+        as_of_date = candidate_rows["date"].iloc[0] if not candidate_rows.empty else "unknown"
+
+        st.markdown('<div class="sc-label">Today\'s ranked stock predictions</div>', unsafe_allow_html=True)
+        signals_used = manifest.get("signals_used", [])
+        signal_badges = " ".join(badge(f"{s['signal_name']} {s['tested_score']:+.3f}", "muted")
+                                 for s in signals_used)
+        st.markdown(f'<p style="color:{ZINC["500"]}; font-size:.85rem;">As of {as_of_date} · '
+                    f'combining {len(signals_used)} proven signal(s): {signal_badges}</p>',
+                    unsafe_allow_html=True)
+
+        if not candidate_rows.empty:
+            top_pick = candidate_rows.iloc[0]
+            hero_columns = st.columns(4)
+            hero_columns[0].markdown(card("top pick", top_pick["ticker"],
+                                          f"P(up) {top_pick['predicted_up_probability']:.3f}", dark=True),
+                                     unsafe_allow_html=True)
+            hero_columns[1].markdown(card("candidates ranked", str(len(candidate_rows)),
+                                          f"industries: {candidate_rows['industry'].nunique()}"),
+                                     unsafe_allow_html=True)
+            hero_columns[2].markdown(card("driving signal", top_pick["top_driver"], ""),
+                                     unsafe_allow_html=True)
+            hero_columns[3].markdown(card("as of", str(as_of_date),
+                                          "refresh: python3 run_phase_c_loop.py --rank-candidates"),
+                                     unsafe_allow_html=True)
+
+            display_columns = ["ticker", "industry", "predicted_up_probability", "top_driver"]
+            display_table = candidate_rows[display_columns].rename(
+                columns={"predicted_up_probability": "P(up over next 21d)", "top_driver": "driving signal"}
+            )
+            st.dataframe(display_table, use_container_width=True, hide_index=True)
+            st.download_button("Download full candidates CSV", candidate_rows.to_csv(index=False),
+                               file_name=f"candidates_{as_of_date}.csv", mime="text/csv")
+    else:
+        st.markdown('<div class="sc-label">Today\'s ranked stock predictions</div>', unsafe_allow_html=True)
+        st.markdown(
+            f'<div class="sc-card">'
+            f'<strong>Not live yet — this is where the research pays off.</strong>'
+            f'<div class="sc-sub" style="margin-top:.5rem; line-height:1.6">'
+            f'Run <code>python3 run_phase_c_loop.py --rank-candidates</code> to combine every proven '
+            f'signal into one model (weights learned from data, never hand-picked) and predict on '
+            f'today\'s live, unlabeled rows — the result becomes a ranked list: '
+            f'<strong>ticker · P(up over next 21 trading days) · which signal is driving it</strong>.'
+            f'<br><br>Signals eligible so far: '
+            f'{", ".join(positive_signals["signal_name"]) if not positive_signals.empty else "none yet"} '
+            f'({len(positive_signals)} positive out of {len(tested)} tested).</div></div>',
+            unsafe_allow_html=True,
+        )
 
 with detail_tab:
     if experiments.empty:

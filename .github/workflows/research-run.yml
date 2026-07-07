@@ -25,6 +25,11 @@ concurrency:
   group: research-run
   cancel-in-progress: false
 
+# GitHub defaults new repos' Action tokens to read-only; the final step here
+# commits + pushes results, so this job needs write access explicitly.
+permissions:
+  contents: write
+
 jobs:
   research:
     runs-on: ubuntu-latest
