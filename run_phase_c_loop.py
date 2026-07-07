@@ -193,14 +193,14 @@ async def run_researcher_session(iteration: int, budget_usd: float,
     return session_id, cost
 
 
-async def run_reflection(session_id: str, verdict_summary: str, budget_usd: float = 1.0) -> str:
+async def run_reflection(session_id: str, verdict_summary: str, budget_usd: float = 1.0) -> tuple[str, float | None]:
     """Resume the researcher's session with the verdict; get a short journal note back.
 
     The researcher saw its own exploration; the evaluator's number is news to it.
     This closes the loop the spec describes: the journal records not just the
     score but the researcher's own read on WHY it worked or failed.
     """
-    from claude_agent_sdk import AssistantMessage, ClaudeAgentOptions, TextBlock, query
+    from claude_agent_sdk import AssistantMessage, ClaudeAgentOptions, ResultMessage, TextBlock, query
 
     options = ClaudeAgentOptions(
         model="claude-opus-4-8",
@@ -217,10 +217,13 @@ async def run_reflection(session_id: str, verdict_summary: str, budget_usd: floa
         "differently because of it? Reply with only the note text."
     )
     note_fragments = []
+    reflection_cost = None
     async for message in query(prompt=prompt, options=options):
         if isinstance(message, AssistantMessage):
             note_fragments.extend(b.text for b in message.content if isinstance(b, TextBlock))
-    return " ".join(fragment.strip() for fragment in note_fragments).strip()
+        elif isinstance(message, ResultMessage):
+            reflection_cost = message.total_cost_usd
+    return " ".join(fragment.strip() for fragment in note_fragments).strip(), reflection_cost
 
 
 def load_feature_module(feature_code_path: pathlib.Path):
@@ -416,10 +419,17 @@ def main() -> None:
         if metrics is not None and session_id is not None:
             verdict_summary = json.dumps(metrics)
             try:
-                note = asyncio.run(run_reflection(session_id, verdict_summary))
+                note, reflection_cost = asyncio.run(run_reflection(session_id, verdict_summary))
                 if note:
                     journal.record_researcher_notes(experiment_id, note)
                     print(f"  reflection: {note[:160]}{'...' if len(note) > 160 else ''}")
+                # Roll reflection cost into the experiment's recorded cost, so
+                # cost_usd reflects the FULL spend for this iteration, not just
+                # the main research session (this was silently undercounting).
+                if reflection_cost:
+                    total_cost = (cost or 0) + reflection_cost
+                    journal.record_session_artifacts(experiment_id, cost_usd=total_cost)
+                    print(f"  reflection cost: ${reflection_cost:.2f} (iteration total: ${total_cost:.2f})")
             except Exception as reflection_error:
                 print(f"  reflection step failed (non-fatal): {reflection_error}")
 
