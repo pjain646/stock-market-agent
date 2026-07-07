@@ -42,18 +42,38 @@ def positive_signals(journal_connection) -> list[dict]:
 
 def build_combined_panel(panel: pd.DataFrame, signals: list[dict],
                          project_root: pathlib.Path, load_feature_module) -> tuple[pd.DataFrame, list[str]]:
-    """Apply every proven signal's feature code to the panel, in sequence.
+    """Apply every proven signal's feature code to the panel — in ISOLATION.
 
-    `load_feature_module` is passed in (from run_phase_c_loop) rather than
-    imported, so this module stays free of any orchestration/SDK dependency —
-    it only ever touches already-written feature code, never writes any.
+    Each signal gets its own pristine copy of the base panel (the same input
+    shape it was tested with individually), never a panel already carrying
+    other signals' columns. Only its DECLARED new_columns are merged back in,
+    by (ticker, date), never any other column it happened to leave behind.
+
+    This is deliberate, not just tidy: naively chaining signals by mutating one
+    shared panel let one signal's internal scratch column (e.g. a helper named
+    "avail_date") collide with another's identically-named internal column,
+    crashing with a KeyError that had nothing to do with either signal's
+    actual logic. Isolating + merging-by-declared-columns fixes THAT — but a
+    second collision showed up immediately after: independently-written
+    signals landed on the same DECLARED names too (two different signals both
+    computed a column called "ag_yoy", another pair both used "pm_roa" —
+    unsurprising, since related economic ideas reuse related ratios). Pandas
+    silently auto-suffixes colliding merge columns, silently detaching them
+    from the names this function still thought it was using. The fix:
+    namespace every signal's columns by its own iteration, so collision is
+    structurally impossible regardless of what names any script chooses.
     """
     combined_panel = panel.copy()
     all_feature_columns: list[str] = []
     for signal in signals:
         module = load_feature_module((project_root / signal["feature_code_path"]).resolve())
-        combined_panel, new_columns = module.add_feature(combined_panel)
-        all_feature_columns.extend(new_columns)
+        panel_with_signal, new_columns = module.add_feature(panel.copy())  # fresh copy, not combined_panel
+
+        namespace = f"iter{signal['iteration']}"
+        renamed_columns = {column: f"{namespace}__{column}" for column in new_columns}
+        to_merge = panel_with_signal[["ticker", "date"] + list(new_columns)].rename(columns=renamed_columns)
+        combined_panel = combined_panel.merge(to_merge, on=["ticker", "date"], how="left")
+        all_feature_columns.extend(renamed_columns.values())
     return combined_panel, all_feature_columns
 
 
