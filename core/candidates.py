@@ -25,17 +25,27 @@ import pandas as pd
 
 from .evaluator import _train_model
 from .splits import recency_weights
+from .untrusted_exec import secrets_hidden
 
 
 def positive_signals(journal_connection) -> list[dict]:
-    """Every journal experiment with a positive validated tested_score.
+    """Every journal experiment that's actually PROVEN: positive validated
+    tested_score AND a passing Gate 1 verdict on the sealed holdout.
+
+    A positive validation score alone isn't enough to call a signal proven —
+    that's exactly the number the holdout exists to stress-test, and it can
+    look real in validation while failing to generalize (see holdout_verdicts).
+    Signals never put through the holdout ceremony, or that failed it, are
+    excluded here even if their validation score was positive.
 
     Returns the raw rows (as dicts) needed to reload each signal's feature
     code: iteration, signal_name, feature_code_path, feature_columns.
     """
     rows = journal_connection.execute(
-        "SELECT iteration, signal_name, feature_code_path, feature_columns, tested_score"
-        " FROM experiments WHERE status = 'tested' AND tested_score > 0 ORDER BY tested_score DESC"
+        "SELECT e.iteration, e.signal_name, e.feature_code_path, e.feature_columns, e.tested_score"
+        " FROM experiments e JOIN holdout_verdicts v ON v.experiment_id = e.id"
+        " WHERE e.status = 'tested' AND e.tested_score > 0 AND v.gate1_passed = 1"
+        " ORDER BY e.tested_score DESC"
     ).fetchall()
     return [dict(row) for row in rows]
 
@@ -67,7 +77,8 @@ def build_combined_panel(panel: pd.DataFrame, signals: list[dict],
     all_feature_columns: list[str] = []
     for signal in signals:
         module = load_feature_module((project_root / signal["feature_code_path"]).resolve())
-        panel_with_signal, new_columns = module.add_feature(panel.copy())  # fresh copy, not combined_panel
+        with secrets_hidden():
+            panel_with_signal, new_columns = module.add_feature(panel.copy())  # fresh copy, not combined_panel
 
         namespace = f"iter{signal['iteration']}"
         renamed_columns = {column: f"{namespace}__{column}" for column in new_columns}
