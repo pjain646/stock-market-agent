@@ -2,6 +2,14 @@
 # keys.local.json locally or env vars (in CI: GitHub secrets).
 keys.local.json
 
+# ADMIN_PASSCODE (gates the public dashboard's run/holdout controls) lives
+# here for local testing only — the real one belongs in Streamlit Cloud's
+# app secrets UI, never in the repo.
+.streamlit/secrets.toml
+
+# /cso security reports — local audit trail, not repo content.
+.gstack/
+
 # Local caches and artifacts (regenerable; panel.pkl is refetched on demand)
 data_cache/
 __pycache__/

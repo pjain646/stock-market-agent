@@ -35,6 +35,7 @@ from core import candidates as candidates_module, config, journal  # noqa: E402
 from core.labeling import add_forward_direction_label  # noqa: E402
 from core.splits import assign_time_split  # noqa: E402
 from core.evaluator import compare_models, per_industry_eval, walk_forward_eval  # noqa: E402
+from core.untrusted_exec import secrets_hidden  # noqa: E402
 
 PANEL_CACHE_PATH = PROJECT_ROOT / "data_cache" / "panel.pkl"
 PROPOSALS_DIR = PROJECT_ROOT / "proposals"
@@ -226,11 +227,13 @@ async def run_reflection(session_id: str, verdict_summary: str, budget_usd: floa
     return " ".join(fragment.strip() for fragment in note_fragments).strip(), reflection_cost
 
 
+
 def load_feature_module(feature_code_path: pathlib.Path):
     """Import the researcher's feature module and validate the contract."""
     spec = importlib.util.spec_from_file_location("proposed_feature", feature_code_path)
     module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
+    with secrets_hidden():
+        spec.loader.exec_module(module)
     for required in ("SIGNAL_NAME", "HYPOTHESIS", "add_feature"):
         if not hasattr(module, required):
             raise ValueError(f"feature module is missing required attribute: {required}")
@@ -247,7 +250,8 @@ def evaluate_proposal(panel: pd.DataFrame, feature_code_path: pathlib.Path,
     """
     feature_code_path = feature_code_path.resolve()
     module = load_feature_module(feature_code_path)
-    panel_with_feature, new_feature_columns = module.add_feature(panel.copy())
+    with secrets_hidden():
+        panel_with_feature, new_feature_columns = module.add_feature(panel.copy())
 
     experiment_id = journal.record_proposal(
         iteration=iteration,
@@ -316,7 +320,8 @@ def final_holdout_verdict(panel: pd.DataFrame) -> None:
     print(f"opening the holdout for the best journal signal: {best['signal_name']} "
           f"(validation tested_score {best['tested_score']:+.4f})")
     module = load_feature_module(PROJECT_ROOT / best["feature_code_path"])
-    panel_with_feature, new_feature_columns = module.add_feature(panel.copy())
+    with secrets_hidden():
+        panel_with_feature, new_feature_columns = module.add_feature(panel.copy())
 
     metrics = open_holdout_once(
         panel_with_feature, list(new_feature_columns),

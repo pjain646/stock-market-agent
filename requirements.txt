@@ -1,14 +1,14 @@
 # Core research pipeline
-pandas
-numpy
-scipy
-scikit-learn
-yfinance
-requests
+pandas==2.3.0
+numpy==2.3.1
+scipy==1.18.0
+scikit-learn==1.9.0
+yfinance==1.4.1
+requests==2.32.4
 
 # Dashboard
-streamlit
-altair
+streamlit==1.59.0
+altair==6.2.2
 
 # Agent loop (local / CI runs; not needed by the dashboard itself)
-claude-agent-sdk
+claude-agent-sdk==0.2.110

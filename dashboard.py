@@ -177,6 +177,33 @@ def run_is_alive(state: dict | None) -> bool:
         return False
 
 
+def run_controls_unlocked() -> bool:
+    """Gate the run-launch and holdout-open controls behind a shared passcode.
+
+    Local `streamlit run dashboard.py` has no ADMIN_PASSCODE secret configured,
+    so it stays open (localhost, trusted use). Once deployed publicly (per
+    README: share.streamlit.io), set ADMIN_PASSCODE in the app's secrets —
+    every visitor without it is left read-only on the rest of the dashboard.
+    """
+    try:
+        required_passcode = st.secrets.get("ADMIN_PASSCODE")
+    except Exception:
+        required_passcode = None
+    if not required_passcode:
+        return True
+    if st.session_state.get("run_controls_unlocked"):
+        return True
+    entered = st.text_input("passcode to unlock run controls", type="password",
+                            key="run_passcode_input")
+    if entered:
+        if entered == required_passcode:
+            st.session_state["run_controls_unlocked"] = True
+            st.rerun()
+        else:
+            st.error("wrong passcode")
+    return False
+
+
 def launch_run(iterations: int, budget_usd: float) -> dict:
     """Start the research loop as a detached background process; log to a file."""
     RUN_LOGS_DIR.mkdir(parents=True, exist_ok=True)
@@ -466,48 +493,52 @@ with run_tab:
                 "the judge scores it → verdict + reflection land in the journal. The page refreshes "
                 "results every ~10 seconds while a run is going.</p>", unsafe_allow_html=True)
 
-    control_columns = st.columns([1, 1, 2])
-    run_iterations = control_columns[0].number_input("iterations", min_value=1, max_value=30,
-                                                     value=1, disabled=run_alive)
-    run_budget = control_columns[1].number_input("budget $/iteration", min_value=0.5, max_value=10.0,
-                                                 value=5.0, step=0.5, disabled=run_alive)
-    estimated = run_iterations * 0.65
-    control_columns[2].markdown(card("estimated cost", f"~${estimated:.2f}",
-                                     f"hard cap ${run_iterations * run_budget:.0f} "
-                                     f"(observed ≈ $0.55–0.65/iteration)"), unsafe_allow_html=True)
-
-    if run_alive:
-        st.markdown(badge("RESEARCHER RUNNING", "solid") + " " +
-                    badge(f"pid {run_state['pid']} · started {run_state['started_at']}", "muted"),
-                    unsafe_allow_html=True)
-        st.code(tail_of_log(run_state), language=None)
-        if st.button("Refresh status"):
-            st.rerun()
+    if not run_controls_unlocked():
+        st.info("This deployment requires a passcode to launch runs or open the holdout "
+                 "— read-only for everyone else. Enter it above to unlock.")
     else:
-        if st.button("▶ Send the researcher on a run", type="primary"):
-            state = launch_run(int(run_iterations), float(run_budget))
-            st.success(f"Run launched (pid {state['pid']}) — {run_iterations} iteration(s), "
-                       f"${run_budget}/iteration cap. Watch progress here or in the Signals tab.")
-            st.rerun()
-        if run_state:  # a previous run exists but is finished
-            with st.expander(f"last run's log ({run_state['started_at']})"):
-                st.code(tail_of_log(run_state, lines=60), language=None)
+        control_columns = st.columns([1, 1, 2])
+        run_iterations = control_columns[0].number_input("iterations", min_value=1, max_value=30,
+                                                         value=1, disabled=run_alive)
+        run_budget = control_columns[1].number_input("budget $/iteration", min_value=0.5, max_value=10.0,
+                                                     value=5.0, step=0.5, disabled=run_alive)
+        estimated = run_iterations * 0.65
+        control_columns[2].markdown(card("estimated cost", f"~${estimated:.2f}",
+                                         f"hard cap ${run_iterations * run_budget:.0f} "
+                                         f"(observed ≈ $0.55–0.65/iteration)"), unsafe_allow_html=True)
 
-    st.markdown('<div class="sc-label" style="margin-top:1.2rem">End of run — the final verdict</div>',
-                unsafe_allow_html=True)
-    st.markdown(f'<p style="color:{ZINC["500"]}; font-size:.85rem;">When a research run is complete, '
-                "the sealed holdout opens <strong>once</strong> for the best signal. This is deliberate "
-                "and manual — it cannot be part of a normal iteration.</p>", unsafe_allow_html=True)
-    acknowledge = st.checkbox("I understand the holdout opens once, at the true end of a run")
-    if st.button("Open the holdout (Gate 1 verdict)", disabled=not acknowledge or run_alive):
-        with st.spinner("Opening the holdout ..."):
-            result = subprocess.run(
-                [sys.executable, "run_phase_c_loop.py", "--final-verdict"],
-                cwd=PROJECT_ROOT, capture_output=True, text=True, timeout=600,
-            )
-        verdict_lines = [line for line in result.stdout.splitlines() if "VERDICT" in line or "holdout" in line]
-        (st.success if result.returncode == 0 else st.error)("\n".join(verdict_lines) or result.stderr[-500:])
-        load_holdout_verdicts.clear()
+        if run_alive:
+            st.markdown(badge("RESEARCHER RUNNING", "solid") + " " +
+                        badge(f"pid {run_state['pid']} · started {run_state['started_at']}", "muted"),
+                        unsafe_allow_html=True)
+            st.code(tail_of_log(run_state), language=None)
+            if st.button("Refresh status"):
+                st.rerun()
+        else:
+            if st.button("▶ Send the researcher on a run", type="primary"):
+                state = launch_run(int(run_iterations), float(run_budget))
+                st.success(f"Run launched (pid {state['pid']}) — {run_iterations} iteration(s), "
+                           f"${run_budget}/iteration cap. Watch progress here or in the Signals tab.")
+                st.rerun()
+            if run_state:  # a previous run exists but is finished
+                with st.expander(f"last run's log ({run_state['started_at']})"):
+                    st.code(tail_of_log(run_state, lines=60), language=None)
+
+        st.markdown('<div class="sc-label" style="margin-top:1.2rem">End of run — the final verdict</div>',
+                    unsafe_allow_html=True)
+        st.markdown(f'<p style="color:{ZINC["500"]}; font-size:.85rem;">When a research run is complete, '
+                    "the sealed holdout opens <strong>once</strong> for the best signal. This is deliberate "
+                    "and manual — it cannot be part of a normal iteration.</p>", unsafe_allow_html=True)
+        acknowledge = st.checkbox("I understand the holdout opens once, at the true end of a run")
+        if st.button("Open the holdout (Gate 1 verdict)", disabled=not acknowledge or run_alive):
+            with st.spinner("Opening the holdout ..."):
+                result = subprocess.run(
+                    [sys.executable, "run_phase_c_loop.py", "--final-verdict"],
+                    cwd=PROJECT_ROOT, capture_output=True, text=True, timeout=600,
+                )
+            verdict_lines = [line for line in result.stdout.splitlines() if "VERDICT" in line or "holdout" in line]
+            (st.success if result.returncode == 0 else st.error)("\n".join(verdict_lines) or result.stderr[-500:])
+            load_holdout_verdicts.clear()
 
 # ------------------------------------------------------------------ glossary
 st.markdown("<div style='height:1.5rem'></div>", unsafe_allow_html=True)
