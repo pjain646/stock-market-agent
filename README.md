@@ -13,9 +13,10 @@ never grades its own work.
 │   JOURNAL   │──────────▶ │RESEARCHER│  Claude Opus, governed by the
 │  (sqlite)   │            │  (LLM)   │  research-methodology skill
 └─────────────┘            └────┬─────┘
-      ▲                         │ writes ONE signal as point-in-time
-      │ verdict +               │ feature code (proposals/iteration_N/)
-      │ reflection         ┌────▼─────┐
+      ▲                         │ writes a BUNDLE of 2-3 orthogonal
+      │ verdict +               │ factors as point-in-time feature code
+      │ reflection              │ (proposals/iteration_N/), scored together
+      │                    ┌────▼─────┐ as one combined model
       └────────────────────│  JUDGE   │  fixed models (LR + RF + boosted trees),
                            │ (Python) │  purged walk-forward, scored vs base rate;
                            └──────────┘  the LLM cannot influence the score
@@ -24,6 +25,14 @@ never grades its own work.
 At the end of a research run, a sealed **holdout** (the newest 20% of history)
 opens exactly once. If the best signal still beats the base rate there, it
 passes **Gate 1**.
+
+**Why bundles, not single signals:** the first campaign's best single signal
+(validation +0.0521) failed Gate 1 on the sealed holdout (-0.0118). Picking
+the best of N single-signal tries is a noisy max-order-statistic — it finds
+validation-split artifacts, not real edges. Testing 2-3 deliberately
+orthogonal factors together as one model each iteration is the fix; the
+universe was also expanded from 24 to ~166 liquid names across 11 sectors to
+raise the effective sample size behind every score.
 
 ## Repo map
 

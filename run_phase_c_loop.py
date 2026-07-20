@@ -46,18 +46,34 @@ CANDIDATES_PATH = PROJECT_ROOT / "candidates" / "candidates.csv"
 
 # The contract every proposed feature module must satisfy. This text is shown
 # to the researcher verbatim, and enforced when the module is loaded.
+#
+# Bundle, not single signal (post-Gate-1-failure redesign): a best-of-N search
+# over single signals is a noisy max-order-statistic — the exact overfitting
+# pattern that failed the campaign's first holdout (validation +0.0521,
+# holdout -0.0118). Testing 2-3 deliberately orthogonal factors together as
+# ONE combined model each iteration is the fix: the evaluator already scores
+# whatever's in feature_columns as one model (core/evaluator.py's
+# walk_forward_eval takes a list), so no evaluator change was needed — only
+# this contract and the prompt below, which now require a bundle.
 FEATURE_CONTRACT = '''\
-SIGNAL_NAME = "a_short_snake_case_name"
-HYPOTHESIS = "One or two sentences: the economic rationale — WHY this should predict 21-day direction."
+SIGNAL_NAME = "a_short_snake_case_bundle_name"
+HYPOTHESIS = (
+    "For EACH factor in the bundle: 1-2 sentences on its own economic rationale. "
+    "PLUS one sentence per factor pair on why you believe they're orthogonal — "
+    "i.e. each captures a genuinely different source of edge, not a variation "
+    "on the same idea."
+)
 
 def add_feature(panel):
-    """Compute the feature(s), point-in-time safe.
+    """Compute ALL factors in the bundle, point-in-time safe.
 
     Args:
         panel: pandas DataFrame with columns [date, ticker, industry, adj_close,
                label, split] (one row per ticker per trading day).
     Returns:
         (panel_with_new_columns, list_of_new_feature_column_names)
+        — one column per factor in the bundle; the evaluator scores all of
+        them together as a single combined model, not factor-by-factor.
     """
 '''
 
@@ -110,10 +126,39 @@ def researcher_prompt(iteration: int, journal_history: str) -> str:
     return f"""You are the researcher in an automated quant research loop. This is iteration {iteration}.
 Work under the research-methodology skill's discipline at all times.
 
-YOUR JOB THIS ITERATION — propose and implement exactly ONE new signal:
+CAMPAIGN CONTEXT: the first campaign's best single signal (validation +0.0521)
+FAILED Gate 1 on the sealed holdout (-0.0118). A best-of-N search over single
+signals is a noisy max — it finds artifacts that look real in validation and
+don't generalize. The fix: stop searching for one winning signal. Propose
+BUNDLES of orthogonal factors instead, tested together as one combined model.
+The universe was also expanded (~166 liquid names across 11 sectors, up from
+24 across 3) to raise the effective sample size behind every score.
+
+CURRENT FOCUS: check the journal history below for a tested analyst-sentiment
+factor (built from fetch_analyst_estimates and/or fetch_analyst_grades — analyst
+estimate revisions and rating upgrades/downgrades). If one does not yet exist,
+prioritize building it this iteration: it is the closest available proxy to
+investor sentiment (how the street's view of a company is shifting, independent
+of the fundamentals already tested) and has never been tried in this campaign.
+Bundle it with the proven discipline/profitability-momentum/macro/value legs
+only where you can argue genuine orthogonality — do not force it in if it
+turns out to be redundant with profitability momentum (both can reflect
+improving fundamentals). If a tested analyst-sentiment factor already exists
+in the journal, ignore this section and proceed with ordinary iteration logic.
+
+YOUR JOB THIS ITERATION — propose and implement a BUNDLE of 2-3 ORTHOGONAL factors,
+tested together as ONE combined model:
 
 1. Read your journal history (below). Build on what worked; do not repeat what failed.
-2. Explore the data and form a hypothesis with a clear ECONOMIC rationale.
+   If a prior single-factor signal showed a real (if weak) mechanism, it's a candidate
+   to pair with something uncorrelated now, not to re-test alone.
+2. Pick 2-3 factors that each have their own clear ECONOMIC rationale, AND that you
+   believe are ORTHOGONAL to each other — each capturing a genuinely different source
+   of predictive edge (e.g. one macro/timing factor + one fundamental/quality factor +
+   one price/momentum factor), not three variations on the same idea. State explicitly
+   why you believe each pair is low-correlation, not just why each factor alone might work.
+   Two genuinely orthogonal factors beats three overlapping ones — do not pad the bundle
+   just to hit 3.
    - The labeled panel is at data_cache/panel.pkl — a pickled pandas DataFrame with columns
      [date, ticker, industry, adj_close, label, forward_return, split]. label = did the price
      rise over the next 21 trading days; forward_return = the realized move itself (used only
@@ -130,13 +175,14 @@ YOUR JOB THIS ITERATION — propose and implement exactly ONE new signal:
    Every value must only use information public on that row's date (fundamentals by
    filed_date, insider trades by filing date — the fetchers give you the right columns).
 4. Smoke-test your module: run it against the panel with python via bash, confirm it returns
-   the new columns and they are populated (not all-NaN), then stop.
+   ALL the new columns and each is populated (not all-NaN) for each factor, then stop.
 
 HARD BOUNDARIES:
 - You do NOT run the evaluator, you do NOT score your own signal, and you NEVER touch
   holdout rows. The deterministic judge runs after you finish; its verdict lands in the
-  journal for your next iteration.
-- Propose ONE signal (a feature family with a shared rationale counts as one).
+  journal for your next iteration. It scores your whole bundle as ONE model, not
+  factor-by-factor — there is no partial credit for one good factor in a weak bundle.
+- Propose a BUNDLE of 2-3 orthogonal factors, not a single signal.
 - Keep the feature code self-contained: imports, SIGNAL_NAME, HYPOTHESIS, add_feature.
 
 YOUR JOURNAL SO FAR:

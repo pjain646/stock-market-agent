@@ -1,15 +1,45 @@
 """Phase A configuration. Assumptions are deliberately explicit so they're easy
-to review and change. Focused, liquid universe first (per spec); scale later.
+to review and change.
 """
 
-# ~8 liquid large-caps per industry. Survivorship caveat: this is a *current*
-# liquid set used to prove the harness end-to-end; a survivorship-free
-# historical universe (incl. delisted names) is required before any result is
-# trusted, and comes with the EDGAR/point-in-time work.
+# ~150-170 liquid large-caps across 11 sectors (up from the original 24-ticker,
+# 3-sector proof-of-harness set). The small universe was diagnosed as a real
+# cause of the campaign's Gate 1 failure: too few, too correlated names meant
+# low effective sample size, so validation scores were noisy enough for a
+# best-of-17 search to find an artifact that didn't hold on holdout. The
+# original three sector keys ("Financials", "Technology", "Pharma") are left
+# unchanged — existing proposals/ feature code keys off these exact industry
+# names — with more tickers added to each; new sectors are additive.
+#
+# Survivorship caveat unchanged: this is a *current* liquid set, not a
+# survivorship-free historical universe (no delisted names). Still true here,
+# just at a larger scale.
 UNIVERSE = {
-    "Financials": ["JPM", "BAC", "WFC", "C", "GS", "MS", "SCHW", "AXP"],
-    "Technology": ["AAPL", "MSFT", "NVDA", "GOOGL", "AMZN", "META", "AVGO", "CRM"],
-    "Pharma":     ["JNJ", "PFE", "MRK", "ABBV", "LLY", "BMY", "AMGN", "GILD"],
+    "Financials": ["JPM", "BAC", "WFC", "C", "GS", "MS", "SCHW", "AXP",
+                   "BLK", "SPGI", "ICE", "CME", "PNC", "USB", "TFC", "COF",
+                   "MET", "PGR", "AIG", "TRV", "ALL", "MMC", "BK", "STT"],
+    "Technology": ["AAPL", "MSFT", "NVDA", "GOOGL", "AMZN", "META", "AVGO", "CRM",
+                   "ORCL", "ADBE", "CSCO", "INTC", "IBM", "TXN", "QCOM", "INTU",
+                   "AMD", "NOW", "ADP", "ACN"],
+    "Pharma":     ["JNJ", "PFE", "MRK", "ABBV", "LLY", "BMY", "AMGN", "GILD",
+                   "UNH", "CVS", "ABT", "TMO", "DHR", "MDT", "CI", "ELV",
+                   "HUM", "ZTS", "SYK", "BSX"],
+    "Energy": ["XOM", "CVX", "COP", "SLB", "EOG", "PSX", "MPC", "OXY",
+               "WMB", "KMI", "VLO", "HES", "BKR", "HAL", "DVN"],
+    "ConsumerDiscretionary": ["HD", "MCD", "NKE", "SBUX", "LOW", "TJX", "BKNG", "CMG",
+                              "ORLY", "MAR", "GM", "F", "YUM", "ROST", "AZO"],
+    "ConsumerStaples": ["PG", "KO", "PEP", "WMT", "COST", "PM", "MO", "MDLZ",
+                        "CL", "KMB", "GIS", "STZ", "SYY", "KR", "HSY"],
+    "Industrials": ["HON", "UNP", "UPS", "CAT", "RTX", "BA", "LMT", "DE",
+                    "GE", "MMM", "NOC", "GD", "FDX", "EMR", "ETN"],
+    "Utilities": ["NEE", "DUK", "SO", "D", "AEP", "EXC", "SRE", "XEL",
+                  "ED", "PEG", "WEC", "ES", "AWK", "DTE", "PPL"],
+    "CommunicationServices": ["T", "VZ", "CMCSA", "DIS", "NFLX", "TMUS", "CHTR", "EA",
+                              "TTWO", "OMC"],
+    "Materials": ["LIN", "APD", "SHW", "ECL", "NEM", "FCX", "NUE", "DOW",
+                  "DD", "PPG"],
+    "RealEstate": ["PLD", "AMT", "EQIX", "PSA", "SPG", "O", "WELL", "DLR",
+                   "AVB", "EQR"],
 }
 
 START = "2014-01-01"
