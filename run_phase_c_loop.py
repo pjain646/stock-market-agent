@@ -121,8 +121,47 @@ def build_live_panel() -> pd.DataFrame:
     return add_forward_direction_label(panel, forward_horizon_days=config.LABEL_HORIZON)
 
 
-def researcher_prompt(iteration: int, journal_history: str) -> str:
-    """The task given to the researcher each iteration."""
+def _news_source_available() -> bool:
+    """Is a point-in-time news source actually usable right now?
+
+    Gates the sentiment analyst: with no key it must report the axis unbuildable
+    rather than invent a proxy (the discipline that stopped iteration 23 from
+    shipping a lookahead-tainted factor).
+    """
+    import os
+
+    if os.environ.get("FINNHUB_API_KEY"):
+        return True
+    keys_file = PROJECT_ROOT / "keys.local.json"
+    if keys_file.exists():
+        try:
+            return bool(json.loads(keys_file.read_text()).get("FINNHUB_API_KEY"))
+        except (json.JSONDecodeError, OSError):
+            return False
+    return False
+
+
+def researcher_prompt(iteration: int, journal_history: str,
+                      team_brief: str = "") -> str:
+    """The task given to the researcher each iteration.
+
+    `team_brief` is the multi-agent pipeline's output (analyst proposals, the
+    bull/bear debate verdict, and the research manager's selected factor set)
+    when --multi-agent is on. It front-loads the DECISION of what to build; this
+    prompt still owns the implementation, so the feature contract, smoke-test,
+    and evaluation path are unchanged either way.
+    """
+    brief_block = f"""
+YOUR RESEARCH TEAM HAS ALREADY MET. Their decision is binding for this iteration:
+
+{team_brief}
+
+Implement exactly the factor set the research manager selected. Do not add
+factors they rejected, and do not silently substitute a different mechanism —
+if the manager's selection turns out to be unbuildable point-in-time-safe, say
+so plainly in your code comments and implement the buildable subset.
+""" if team_brief else ""
+
     return f"""You are the researcher in an automated quant research loop. This is iteration {iteration}.
 Work under the research-methodology skill's discipline at all times.
 
@@ -133,19 +172,7 @@ don't generalize. The fix: stop searching for one winning signal. Propose
 BUNDLES of orthogonal factors instead, tested together as one combined model.
 The universe was also expanded (~166 liquid names across 11 sectors, up from
 24 across 3) to raise the effective sample size behind every score.
-
-CURRENT FOCUS: check the journal history below for a tested analyst-sentiment
-factor (built from fetch_analyst_estimates and/or fetch_analyst_grades — analyst
-estimate revisions and rating upgrades/downgrades). If one does not yet exist,
-prioritize building it this iteration: it is the closest available proxy to
-investor sentiment (how the street's view of a company is shifting, independent
-of the fundamentals already tested) and has never been tried in this campaign.
-Bundle it with the proven discipline/profitability-momentum/macro/value legs
-only where you can argue genuine orthogonality — do not force it in if it
-turns out to be redundant with profitability momentum (both can reflect
-improving fundamentals). If a tested analyst-sentiment factor already exists
-in the journal, ignore this section and proceed with ordinary iteration logic.
-
+{brief_block}
 YOUR JOB THIS ITERATION — propose and implement a BUNDLE of 2-3 ORTHOGONAL factors,
 tested together as ONE combined model:
 
@@ -159,15 +186,22 @@ tested together as ONE combined model:
    why you believe each pair is low-correlation, not just why each factor alone might work.
    Two genuinely orthogonal factors beats three overlapping ones — do not pad the bundle
    just to hit 3.
-   - The labeled panel is at data_cache/panel.pkl — a pickled pandas DataFrame with columns
-     [date, ticker, industry, adj_close, label, forward_return, split]. label = did the price
-     rise over the next 21 trading days; forward_return = the realized move itself (used only
-     for scoring). NEVER use label, forward_return, or split to build a feature — all three
-     contain the future.
-   - Bundled point-in-time fetchers (import from research-methodology/scripts/data.py):
-     fetch_prices, fetch_fundamentals (SEC EDGAR, filed_date-stamped), fetch_earnings,
-     fetch_insider_transactions (Form 4), fetch_analyst_estimates, fetch_analyst_grades,
-     fetch_macro_series (FRED). All responses are disk-cached; re-calls are free.
+   - The labeled panel is at data_cache/panel.pkl (relative to your cwd, which IS the
+     project root) — a pickled pandas DataFrame with columns [date, ticker, industry,
+     adj_close, label, forward_return, split]. label = did the price rise over the next
+     21 trading days; forward_return = the realized move itself (used only for scoring).
+     NEVER use label, forward_return, or split to build a feature — all three contain
+     the future.
+   - Bundled point-in-time fetchers (import from research-methodology/scripts/data.py,
+     also relative to your cwd): fetch_prices, fetch_fundamentals (SEC EDGAR,
+     filed_date-stamped), fetch_earnings, fetch_insider_transactions (Form 4),
+     fetch_analyst_estimates, fetch_analyst_grades, fetch_macro_series (FRED). All
+     responses are disk-cached; re-calls are free.
+   - These two paths are correct and stable every iteration — do NOT spend turns
+     re-discovering them with `find` or similar; go straight to reading/importing them.
+     A prior iteration's proposals/ directory (if you want to see the pattern another
+     signal used) is at proposals/iteration_N/feature.py for any iteration N in the
+     journal below.
 3. Write your feature code to proposals/iteration_{iteration}/feature.py with EXACTLY this contract:
 
 {FEATURE_CONTRACT}
@@ -208,7 +242,8 @@ def _transcript_lines(message) -> list[str]:
 
 
 async def run_researcher_session(iteration: int, budget_usd: float,
-                                 transcript_path: pathlib.Path) -> tuple[str | None, float | None]:
+                                 transcript_path: pathlib.Path,
+                                 team_brief: str = "") -> tuple[str | None, float | None]:
     """One researcher session via the Claude Agent SDK (the only SDK-aware function).
 
     Writes the full session transcript (visible reasoning + tool calls) to
@@ -229,8 +264,9 @@ async def run_researcher_session(iteration: int, budget_usd: float,
     session_id, cost = None, None
     with transcript_path.open("w") as transcript_file:
         transcript_file.write(f"# Researcher session — iteration {iteration}\n\n")
-        async for message in query(prompt=researcher_prompt(iteration, journal.journal_markdown()),
-                                   options=options):
+        async for message in query(
+                prompt=researcher_prompt(iteration, journal.journal_markdown(), team_brief),
+                options=options):
             for line in _transcript_lines(message):
                 transcript_file.write(line + "\n")
             if isinstance(message, ResultMessage):
@@ -257,11 +293,20 @@ async def run_reflection(session_id: str, verdict_summary: str, budget_usd: floa
         max_budget_usd=budget_usd,
         max_turns=4,
     )
+    # The resumed session can carry stale state — notably a pending background
+    # Bash notification, which the model would otherwise answer INSTEAD of the
+    # verdict (observed polluting iterations 19 and 24: "that notification is
+    # just cleanup of a stale background find"). The journal is the agent's
+    # memory, so a junk note degrades every future iteration that reads it.
     prompt = (
+        "IGNORE any pending notifications, background-task messages, or unfinished "
+        "business from earlier in this session. They are irrelevant and must not be "
+        "mentioned. Do not recap what you built — that is already recorded.\n\n"
         f"The deterministic evaluator has scored your signal:\n{verdict_summary}\n\n"
         "For the journal (your future iterations will read this): in 2-4 sentences, "
-        "why do you think it got this result, and what should the next iteration do "
-        "differently because of it? Reply with only the note text."
+        "why do you think it got THIS SCORE, and what should the next iteration do "
+        "differently because of it? Start your reply with the score itself. "
+        "Reply with only the note text."
     )
     note_fragments = []
     reflection_cost = None
@@ -270,7 +315,17 @@ async def run_reflection(session_id: str, verdict_summary: str, budget_usd: floa
             note_fragments.extend(b.text for b in message.content if isinstance(b, TextBlock))
         elif isinstance(message, ResultMessage):
             reflection_cost = message.total_cost_usd
-    return " ".join(fragment.strip() for fragment in note_fragments).strip(), reflection_cost
+    note = " ".join(fragment.strip() for fragment in note_fragments).strip()
+
+    # Reject a note that answered something other than the verdict rather than
+    # writing it to the journal as if it were a real reflection.
+    pollution_markers = ("background command", "background task", "no action needed",
+                         "already complete", "stale background")
+    lowered = note.lower()
+    if any(marker in lowered for marker in pollution_markers):
+        print("  reflection: polluted by stale session state — discarded")
+        return "", reflection_cost
+    return note, reflection_cost
 
 
 
@@ -430,6 +485,11 @@ def main() -> None:
                         help="combine all proven signals into ranked, live stock candidates")
     parser.add_argument("--push", action="store_true",
                         help="git commit + push journal/proposals after the run (updates the deployed dashboard)")
+    parser.add_argument("--multi-agent", action="store_true",
+                        help="run the multi-agent research team (analysts -> bull/bear debate -> "
+                             "research manager) to decide the factor set before implementing it")
+    parser.add_argument("--debate-rounds", type=int, default=1,
+                        help="bull/bear debate rounds when --multi-agent is on")
     arguments = parser.parse_args()
 
     journal.init_journal()
@@ -452,9 +512,56 @@ def main() -> None:
         proposal_dir.mkdir(parents=True, exist_ok=True)
 
         transcript_path = proposal_dir / "session_transcript.md"
+
+        # Multi-agent phase (optional): the research team decides WHAT to build,
+        # then the researcher session below implements it. Splitting the budget
+        # keeps --budget-usd a true per-iteration cap across both phases.
+        team_brief, team_cost = "", 0.0
+        if arguments.multi_agent:
+            from core.orchestration import conversation_json, render_transcript, run_research_pipeline
+
+            print("  [multi-agent] research team convening")
+            from core.orchestration import context as agent_context
+
+            # Per-role context: each agent reads only its own slice of the
+            # journal plus the grounding facts its axis needs. Sending every
+            # agent the full digest cost ~47k tokens/iteration; this is ~5k.
+            rejected = journal.rejected_factors_digest()
+            role_journals = {
+                role: (journal.journal_digest_for_role(role)
+                       + ("\n\n" + rejected if rejected else ""))
+                for role in ("fundamental", "macro", "bull", "bear", "manager")
+            }
+            # Concept coverage is hash-keyed on the ticker set, so this is a
+            # ~2min compute the first time a universe is seen and instant after.
+            # It exists because iteration 24 built a gross-profitability factor
+            # without knowing GrossProfit is filed by only 42% of the universe.
+            role_facts = {
+                "fundamental": agent_context.fundamental_facts(
+                    panel, agent_context.compute_concept_coverage(panel)),
+                "macro": agent_context.macro_series_facts(),
+                "bear": agent_context.bear_facts([]),
+            }
+
+            team_state, team_cost = asyncio.run(run_research_pipeline(
+                iteration=iteration,
+                # Shared fallback only; role_journals above is what agents read.
+                journal_history=journal.journal_digest(),
+                role_journals=role_journals,
+                role_facts=role_facts,
+                debate_rounds=arguments.debate_rounds,
+                budget_usd=arguments.budget_usd * 0.4,
+            ))
+            (proposal_dir / "team_transcript.md").write_text(render_transcript(team_state))
+            (proposal_dir / "team_conversation.json").write_text(
+                conversation_json(team_state, team_cost))
+            team_brief = team_state.manager_decision
+
         session_id, cost = asyncio.run(
-            run_researcher_session(iteration, arguments.budget_usd, transcript_path)
+            run_researcher_session(iteration, arguments.budget_usd - team_cost,
+                                   transcript_path, team_brief=team_brief)
         )
+        cost = (cost or 0.0) + team_cost
 
         feature_code_path = proposal_dir / "feature.py"
         if not feature_code_path.exists():

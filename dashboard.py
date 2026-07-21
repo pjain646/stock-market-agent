@@ -131,6 +131,32 @@ def load_experiments() -> pd.DataFrame:
 
 
 @st.cache_data(ttl=10)
+def find_agent_conversations() -> list[int]:
+    """Which iterations have --multi-agent output at all (JSON or legacy markdown)."""
+    found = []
+    proposals_dir = PROJECT_ROOT / "proposals"
+    if not proposals_dir.exists():
+        return found
+    for path in sorted(proposals_dir.glob("iteration_*")):
+        if (path / "team_conversation.json").exists() or (path / "team_transcript.md").exists():
+            try:
+                found.append(int(path.name.split("_")[1]))
+            except (IndexError, ValueError):
+                continue
+    return sorted(found)
+
+
+@st.cache_data(ttl=10)
+def load_agent_conversation(iteration: int) -> dict | None:
+    """The structured team conversation for one iteration, or None if only the
+    legacy markdown transcript exists (pre-dates this dashboard tab)."""
+    path = PROJECT_ROOT / "proposals" / f"iteration_{iteration}" / "team_conversation.json"
+    if not path.exists():
+        return None
+    return json.loads(path.read_text())
+
+
+@st.cache_data(ttl=10)
 def load_holdout_verdicts() -> pd.DataFrame:
     with sqlite3.connect(JOURNAL_DB) as connection:
         return pd.read_sql(
@@ -277,8 +303,9 @@ else:
 st.markdown("<div style='height:.75rem'></div>", unsafe_allow_html=True)
 
 # ------------------------------------------------------------------- tabs
-signals_tab, candidates_tab, detail_tab, holdout_tab, run_tab = st.tabs(
-    ["Signals", "Stock predictions", "Experiment detail", "Holdout verdicts", "▶ Run the researcher"]
+signals_tab, candidates_tab, detail_tab, agents_tab, holdout_tab, run_tab = st.tabs(
+    ["Signals", "Stock predictions", "Experiment detail", "Agent team",
+     "Holdout verdicts", "▶ Run the researcher"]
 )
 
 with signals_tab:
@@ -352,6 +379,52 @@ with candidates_tab:
             st.dataframe(display_table, use_container_width=True, hide_index=True)
             st.download_button("Download full candidates CSV", candidate_rows.to_csv(index=False),
                                file_name=f"candidates_{as_of_date}.csv", mime="text/csv")
+
+            # ---------------- live news sentiment (annotation ONLY) -------------
+            st.markdown('<div class="sc-label" style="margin-top:1.4rem">'
+                        'What the news is saying right now</div>', unsafe_allow_html=True)
+            st.markdown(
+                f'<p style="color:{ZINC["500"]}; font-size:.85rem;">A separate read on these same '
+                "names, from the last 21 days of company news. This is <strong>not</strong> part of "
+                "any signal and never touches a tested score — the free news feed only covers ~1 "
+                "trailing year against a 2014-2024 panel, so backtesting it would mean judging a "
+                "thin recent slice against decade-long factors as if they were equal evidence. "
+                "It is context for a prediction the model already made, not an input to it.</p>",
+                unsafe_allow_html=True)
+
+            sentiment_state_key = f"live_sentiment_{as_of_date}"
+            if st.button("Fetch live news sentiment", key="fetch_sentiment"):
+                from core import live_sentiment
+
+                tickers = candidate_rows["ticker"].head(15).tolist()
+                with st.spinner(f"Reading recent news for {len(tickers)} names ..."):
+                    try:
+                        table, sentiment_cost = live_sentiment.score_tickers(tickers)
+                        st.session_state[sentiment_state_key] = (table, sentiment_cost)
+                    except Exception as exc:  # missing key, rate limit, etc.
+                        st.session_state[sentiment_state_key] = (None, str(exc))
+
+            if sentiment_state_key in st.session_state:
+                table, meta = st.session_state[sentiment_state_key]
+                if table is None:
+                    st.warning(f"Could not fetch sentiment: {meta}")
+                else:
+                    from core import live_sentiment
+
+                    annotated = table.copy()
+                    annotated["news"] = annotated.apply(live_sentiment.sentiment_label, axis=1)
+                    covered = int((annotated["n_articles"] > 0).sum())
+                    st.markdown(
+                        badge(f"${meta:.2f}", "muted") + " " +
+                        badge(f"{covered}/{len(annotated)} names with news coverage", "muted"),
+                        unsafe_allow_html=True)
+                    st.dataframe(
+                        annotated[["ticker", "news", "n_articles", "sentiment",
+                                   "price_impact_potential", "trend_direction",
+                                   "investor_confidence", "risk_profile_change", "summary"]],
+                        use_container_width=True, hide_index=True)
+                    st.caption("Scores are integers in [-2,+2]. Blank = no news found in the "
+                               "window (unknown), which is deliberately not the same as 0 (neutral).")
     else:
         st.markdown('<div class="sc-label">Today\'s ranked stock predictions</div>', unsafe_allow_html=True)
         st.markdown(
@@ -465,6 +538,60 @@ with detail_tab:
                                mime="text/csv")
         else:
             st.write("no per-row test data recorded for this experiment")
+
+with agents_tab:
+    st.markdown('<div class="sc-label">The research team\'s conversation</div>',
+                unsafe_allow_html=True)
+    st.markdown(
+        f'<p style="color:{ZINC["500"]}; font-size:.85rem;">Every --multi-agent iteration '
+        "runs 3 analysts, a bull/bear debate, and a research manager — this is their actual "
+        "conversation, in order. No agent here can influence a score; they only decide WHAT "
+        "the deterministic judge tests.</p>", unsafe_allow_html=True)
+
+    conversations = find_agent_conversations()
+    if not conversations:
+        st.info("No --multi-agent iterations have run yet. Nothing to show until one does.")
+    else:
+        labels = [f"iteration {n}" for n in conversations]
+        selected = st.selectbox("Iteration", labels, index=len(labels) - 1,
+                                label_visibility="collapsed")
+        iteration_n = conversations[labels.index(selected)]
+        convo = load_agent_conversation(iteration_n)
+
+        if convo is None:
+            # Ran before this dashboard tab existed (team_transcript.md only,
+            # no structured team_conversation.json) — fall back to raw markdown
+            # rather than showing nothing.
+            st.markdown(badge("legacy run — raw transcript only", "muted"), unsafe_allow_html=True)
+            raw = (PROJECT_ROOT / "proposals" / f"iteration_{iteration_n}" / "team_transcript.md")
+            st.markdown(raw.read_text() if raw.exists() else "*(no transcript found)*")
+        else:
+            header = badge(f"${convo.get('total_cost_usd', 0):.2f} team spend", "muted")
+            if convo.get("selected_factors"):
+                header += " " + badge(f"selected: {', '.join(convo['selected_factors'])}", "solid")
+            else:
+                header += " " + badge("no factors selected", "outline")
+            for error in convo.get("errors", []):
+                header += " " + badge(f"⚠ {error[:40]}", "outline")
+            st.markdown(header, unsafe_allow_html=True)
+            st.markdown("<div style='height:.5rem'></div>", unsafe_allow_html=True)
+
+            avatars = {
+                "fundamental": "📊", "macro": "🌐", "sentiment": "📰",
+                "bull": "🐂", "bear": "🐻", "manager": "⚖️",
+            }
+            for turn in convo.get("turns", []):
+                speaker = turn.get("speaker", "?")
+                with st.chat_message(name=speaker, avatar=avatars.get(speaker, "🤖")):
+                    cost_note = (f"  ·  ${turn['cost_usd']:.2f}"
+                                if turn.get("cost_usd") else "  ·  $0.00 (no LLM call)")
+                    st.markdown(f"**{turn.get('label', speaker)}**{cost_note}")
+                    st.markdown(turn.get("content") or "*(no output)*")
+
+            if not convo.get("turns"):
+                st.write("This iteration's team produced no recorded turns (likely crashed "
+                         "before any agent completed — check proposals/iteration_"
+                         f"{iteration_n}/ for logs).")
 
 with holdout_tab:
     if holdout_verdicts.empty:

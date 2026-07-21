@@ -703,13 +703,97 @@ def fetch_short_interest(tickers):  # pragma: no cover - scaffold
     raise NotImplementedError("Short interest fetcher: scaffolded, source = FINRA files (free).")
 
 
-def fetch_news(tickers):  # pragma: no cover - scaffold
-    """Timestamped news. FMP free tier blocks news (premium); needs an alt source.
+_FINNHUB_CACHE_DIR = pathlib.Path.home() / ".cache" / "stock_research_finnhub"
+_FINNHUB_NEWS_URL = "https://finnhub.io/api/v1/company-news"
 
-    Plan: a timestamped provider (e.g. a news API with history) for backtests;
-    live scraping is acceptable only for forward predictions, per the honesty rule.
+
+def fetch_company_news(ticker: str, from_date, to_date) -> pd.DataFrame:
+    """Timestamped company news in an EXPLICIT date window (point-in-time safe).
+
+    This is the sentiment axis's data source. Unlike `fetch_analyst_estimates`
+    (which returns only a CURRENT snapshot, so using it historically would leak
+    the future), Finnhub's company-news endpoint takes `from`/`to` parameters and
+    returns articles stamped with their publication time — so a feature can query
+    a trailing window ending on each row's own date and stay honest.
+
+    Args:
+        ticker: single symbol, e.g. "AAPL".
+        from_date / to_date: 'YYYY-MM-DD' strings or date-likes. INCLUSIVE window.
+
+    Returns:
+        DataFrame [ticker, datetime, headline, summary, source, url], sorted by
+        datetime. Empty DataFrame when the window has no coverage.
+
+    Caveat that matters for backtests: Finnhub's FREE tier serves roughly the
+    trailing year of company news, so a 2014-2024 panel CANNOT be fully covered
+    without a paid plan. Verify coverage over your actual window before trusting
+    a sentiment factor's score, and treat missing windows as missing data (mark
+    unknown) rather than as neutral sentiment.
     """
-    raise NotImplementedError("News fetcher: scaffolded, needs a (paid) timestamped news source.")
+    import requests
+
+    columns = ["ticker", "datetime", "headline", "summary", "source", "url"]
+    api_key = _load_api_key("FINNHUB_API_KEY")
+
+    from_str = pd.Timestamp(from_date).strftime("%Y-%m-%d")
+    to_str = pd.Timestamp(to_date).strftime("%Y-%m-%d")
+
+    # Cache key from symbol + window only — never the secret. A closed historical
+    # window is immutable, so this never needs an expiry.
+    cache_signature = f"news_{ticker}__from={from_str}_to={to_str}"
+    _FINNHUB_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    cache_file = _FINNHUB_CACHE_DIR / f"{cache_signature}.json"
+    if cache_file.exists():
+        payload = json.loads(cache_file.read_text())
+    else:
+        response = requests.get(
+            _FINNHUB_NEWS_URL,
+            params={"symbol": ticker, "from": from_str, "to": to_str, "token": api_key},
+            timeout=30,
+        )
+        if response.status_code == 401:
+            raise RuntimeError("Finnhub rejected the API key (401).")
+        if response.status_code == 429:
+            raise RuntimeError("Finnhub rate limit hit (429) — slow down or upgrade the plan.")
+        response.raise_for_status()
+        payload = response.json()
+        cache_file.write_text(json.dumps(payload))
+
+    if not isinstance(payload, list) or not payload:
+        return pd.DataFrame(columns=columns)
+
+    records = []
+    for article in payload:
+        published = article.get("datetime")
+        if not published:
+            continue
+        records.append({
+            "ticker": ticker,
+            # Finnhub stamps articles as a unix epoch — the publication moment,
+            # which is what makes the point-in-time window meaningful.
+            "datetime": pd.to_datetime(published, unit="s"),
+            "headline": article.get("headline", ""),
+            "summary": article.get("summary", ""),
+            "source": article.get("source", ""),
+            "url": article.get("url", ""),
+        })
+    if not records:
+        return pd.DataFrame(columns=columns)
+    return (pd.DataFrame(records)
+            .sort_values("datetime")
+            .reset_index(drop=True))
+
+
+def fetch_news(tickers):  # pragma: no cover - superseded
+    """Deprecated: use `fetch_company_news(ticker, from_date, to_date)` instead.
+
+    Kept so older proposal code importing this name fails loudly with a pointer
+    rather than silently going missing.
+    """
+    raise NotImplementedError(
+        "fetch_news is superseded by fetch_company_news(ticker, from_date, to_date), "
+        "which takes an explicit point-in-time window. Needs FINNHUB_API_KEY."
+    )
 
 
 def fetch_social_sentiment(tickers):  # pragma: no cover - scaffold

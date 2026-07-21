@@ -21,9 +21,35 @@ research-methodology/evals/
 
 # Internal working documents — the repo is the product, these are the diary
 # (build log + living spec). They stay local; repo docs = README only.
+#
+# This rule is deliberately broad: session notes, run reports, and status
+# write-ups are build history, not product. Anything durable belongs in README
+# or in a code comment where it will actually be read. If a new doc is genuinely
+# for someone cloning the repo, add it explicitly with `git add -f`.
 scratchpad.md
 market-research-agent-spec.md
+*_NOTES.md
+*_TEST.md
+*_DUMP.md
+*_REPORT.md
 
 # Archived pre-launch test data (journal reset backups) — not functional
 # product code, kept locally as a record only.
 archive/
+
+# Per-row out-of-sample scoring data. 17MB PER ITERATION since the universe
+# grew to 166 tickers (86,269 rows each) — 156MB of a 238MB repo, growing
+# permanently with every run. The deployed dashboard needs ~660KB total to
+# render everything (journal.db + feature.py + transcripts + team
+# conversations); these CSVs power ONLY the "download the exact rows" box,
+# which dashboard.py already guards with an .exists() check and degrades
+# gracefully without. Kept on disk locally so that feature still works for you;
+# regenerate for any iteration by re-running its feature through the evaluator.
+proposals/*/oos_rows.csv
+
+# Crashed/partial runs parked for inspection — no journal entry, not product.
+proposals/_partial/
+
+# Generated artifacts: run logs and the agent-context dump (regenerate on demand).
+logs_multiagent_run.log
+AGENT_CONTEXT_DUMP.md
