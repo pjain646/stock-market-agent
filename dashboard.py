@@ -78,7 +78,8 @@ h2, h3 {{ font-weight: 600 !important; letter-spacing: -0.02em; }}
     font-size: .72rem; font-weight: 600; text-transform: uppercase;
     letter-spacing: .06em; color: {ZINC["500"]}; margin-bottom: .35rem;
 }}
-.sc-value {{ font-size: 1.55rem; font-weight: 700; letter-spacing: -0.02em; color: {ZINC["950"]}; }}
+.sc-value {{ font-size: 1.55rem; font-weight: 700; letter-spacing: -0.02em; color: {ZINC["950"]};
+    white-space: nowrap; }}
 .sc-sub {{ font-size: .78rem; color: {ZINC["500"]}; margin-top: .3rem; }}
 
 /* badges: FILLED = positive/active, OUTLINED = negative/neutral */
@@ -578,7 +579,7 @@ with agents_tab:
 
             avatars = {
                 "fundamental": "📊", "macro": "🌐", "sentiment": "📰",
-                "bull": "🐂", "bear": "🐻", "manager": "⚖️",
+                "bull": "🐂", "bear": "🐻", "manager": "⚖️", "external": "🔍",
             }
             for turn in convo.get("turns", []):
                 speaker = turn.get("speaker", "?")
