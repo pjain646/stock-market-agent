@@ -101,17 +101,32 @@ async def run_research_pipeline(iteration: int, journal_history: str,
                 log(f"  {label}: FAILED after retry — {exc}")
 
     # Bounded debate: bull opens, bear responds, repeat.
+    #
+    # Retried on the same terms as the analysts. A lost BEAR is the worst
+    # single failure this pipeline can have: the manager then rules on a bull
+    # argument with no adversarial case against it, which is precisely the
+    # "failed debate" the charter warns about — and it fails silently, looking
+    # like a normal iteration. Observed once in iteration 27 on a transient
+    # error (a plain CLI probe succeeded seconds later), so these are worth
+    # one more attempt rather than losing the review entirely.
     for round_index in range(debate_rounds):
         for label, fn in (("bull", lambda: bull_researcher(state, per_agent)),
                           ("bear", lambda: bear_researcher(state, per_agent))):
-            try:
-                cost = await fn()
-                total_cost += cost or 0.0
-                log(f"  debate r{round_index + 1} {label}: "
-                    f"{len(state.current_response)} chars (${cost or 0:.2f})")
-            except Exception as exc:
-                state.errors.append(f"debate {label}: {exc}")
-                log(f"  debate r{round_index + 1} {label}: FAILED — {exc}")
+            for attempt in (1, 2):
+                try:
+                    cost = await fn()
+                    total_cost += cost or 0.0
+                    retry_note = " (retry)" if attempt == 2 else ""
+                    log(f"  debate r{round_index + 1} {label}{retry_note}: "
+                        f"{len(state.current_response)} chars (${cost or 0:.2f})")
+                    break
+                except Exception as exc:
+                    if attempt == 1:
+                        log(f"  debate r{round_index + 1} {label}: "
+                            f"attempt 1 failed ({exc}) — retrying")
+                        continue
+                    state.errors.append(f"debate {label}: {exc}")
+                    log(f"  debate r{round_index + 1} {label}: FAILED after retry — {exc}")
 
     # Cross-model second opinion before the manager rules. Optional and
     # non-fatal: it bills to a ChatGPT subscription rather than this plan, so
