@@ -213,6 +213,38 @@ contributes nothing exactly where coverage is missing."""
     return cost
 
 
+async def valuation_analyst(state: ResearchState, budget_usd: float = 1.0):
+    """Owns price-based valuation — a second cross-sectional-capable analyst.
+
+    Split out from the fundamental analyst deliberately: with only one analyst
+    that can rank stocks (fundamental) plus a macro analyst whose factor is one
+    market-wide number that can't rank anything (see TEAM_CHARTER), the manager
+    kept collapsing to a single selected factor — exactly the best-of-N shape
+    campaign 2 exists to avoid. "Is this company run well" (fundamental) and
+    "is this company priced well" (valuation) are different mechanisms, so
+    giving them separate seats lets the team assemble a genuine two-factor
+    cross-sectional bundle instead of one factor plus a macro timer.
+    """
+    prompt = f"""Iteration {state.iteration}. You own the VALUATION axis (price
+relative to fundamentals: earnings yield, book-to-market, FCF yield, and similar
+"is this cheap or expensive" ratios) — NOT profitability, quality, or capital
+discipline, which belong to the Fundamental Analyst.
+
+{state.journal_for("valuation")}
+
+{state.facts_for("valuation")}
+
+Propose ONE valuation factor. Prefer something the journal has NOT exhausted.
+If your factor and the fundamental analyst's factor turn out to be correlated,
+that is the bear's job to raise in debate, not yours to pre-negotiate."""
+    text, cost = await _llm_call(prompt, _system_for(_ANALYST_RULES), budget_usd=budget_usd)
+    proposal, report = _parse_analyst(text, "valuation")
+    state.valuation_report = report
+    state.add_proposal(proposal)
+    state.add_turn("valuation", "Valuation Analyst", text, cost)
+    return cost
+
+
 async def macro_analyst(state: ResearchState, budget_usd: float = 1.0):
     """Owns the regime / discount-rate / market-conditions axis."""
     prompt = f"""Iteration {state.iteration}. You own the MACRO axis (rates,

@@ -530,7 +530,7 @@ def main() -> None:
             role_journals = {
                 role: (journal.journal_digest_for_role(role)
                        + ("\n\n" + rejected if rejected else ""))
-                for role in ("fundamental", "macro", "bull", "bear", "manager")
+                for role in ("fundamental", "valuation", "macro", "bull", "bear", "manager")
             }
             # Concept coverage is hash-keyed on the ticker set, so this is a
             # ~2min compute the first time a universe is seen and instant after.
@@ -539,6 +539,7 @@ def main() -> None:
             role_facts = {
                 "fundamental": agent_context.fundamental_facts(
                     panel, agent_context.compute_concept_coverage(panel)),
+                "valuation": agent_context.valuation_facts(),
                 "macro": agent_context.macro_series_facts(),
                 "bear": agent_context.bear_facts([]),
             }

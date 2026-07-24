@@ -48,6 +48,7 @@ class ResearchState:
 
     # Analyst phase — each writes one slice.
     fundamental_report: str = ""
+    valuation_report: str = ""
     macro_report: str = ""
     sentiment_report: str = ""
     proposals: list[FactorProposal] = field(default_factory=list)
@@ -108,6 +109,8 @@ class ResearchState:
         parts = []
         if self.fundamental_report:
             parts.append(f"FUNDAMENTAL ANALYST REPORT:\n{self.fundamental_report}")
+        if self.valuation_report:
+            parts.append(f"VALUATION ANALYST REPORT:\n{self.valuation_report}")
         if self.macro_report:
             parts.append(f"MACRO ANALYST REPORT:\n{self.macro_report}")
         if self.sentiment_report:

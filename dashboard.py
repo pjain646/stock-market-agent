@@ -578,7 +578,7 @@ with agents_tab:
             st.markdown("<div style='height:.5rem'></div>", unsafe_allow_html=True)
 
             avatars = {
-                "fundamental": "📊", "macro": "🌐", "sentiment": "📰",
+                "fundamental": "📊", "valuation": "💰", "macro": "🌐", "sentiment": "📰",
                 "bull": "🐂", "bear": "🐻", "manager": "⚖️", "external": "🔍",
             }
             for turn in convo.get("turns", []):

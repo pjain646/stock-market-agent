@@ -3,8 +3,8 @@
 Flow (PrimoAgent's linear pipeline + TradingAgents' bounded debate loop):
 
     fundamental ─┐
-    macro       ─┼─> [analyst team, sequential] ─> bull <-> bear (N rounds)
-    sentiment   ─┘                                      │
+    valuation   ─┼─> [analyst team, sequential] ─> bull <-> bear (N rounds)
+    macro       ─┘                                      │
                                                         v
                                                  research manager
                                                         │
@@ -21,7 +21,7 @@ import time
 
 from .agents import (bear_researcher, bull_researcher, codex_available,
                      external_reviewer, fundamental_analyst, macro_analyst,
-                     research_manager)
+                     research_manager, valuation_analyst)
 from .state import ResearchState
 
 
@@ -55,7 +55,7 @@ async def run_research_pipeline(iteration: int, journal_history: str,
     # on budget the moment they start — which is exactly what happened with the
     # original 0.25 floor. This is a CAP, not an allocation; observed spend is
     # ~$0.10-0.25 per agent, so the team lands well under it in practice.
-    n_agents = 2 + (2 * debate_rounds) + 1
+    n_agents = 3 + (2 * debate_rounds) + 1
     per_agent = max(budget_usd / n_agents, 0.90)
 
     # No sentiment analyst here, by design. Sentiment is deliberately NOT a
@@ -64,8 +64,16 @@ async def run_research_pipeline(iteration: int, journal_history: str,
     # slice and then weighed against decade-long fundamentals as equal evidence.
     # It lives instead in core/live_sentiment.py as a PREDICTION-TIME
     # annotation, where no history is needed and no backtest can be tainted.
+    #
+    # Three analysts, not two: fundamental (quality/profitability) and
+    # valuation (price-based) are split into separate seats so the team has
+    # TWO cross-sectional-capable analysts. Macro's factor is a single
+    # market-wide number that can't rank stocks (see TEAM_CHARTER), so on its
+    # own it can't supply the second leg of a real bundle — with only one
+    # ranking-capable analyst the manager kept collapsing to a single factor.
     stages = [
         ("fundamental analyst", lambda: fundamental_analyst(state, per_agent)),
+        ("valuation analyst", lambda: valuation_analyst(state, per_agent)),
         ("macro analyst", lambda: macro_analyst(state, per_agent)),
     ]
 
@@ -174,6 +182,7 @@ def render_transcript(state: ResearchState) -> str:
         f"# Multi-agent research pipeline — iteration {state.iteration}\n",
         "## Analyst team\n",
         f"### Fundamental analyst\n{state.fundamental_report or '(no output)'}\n",
+        f"### Valuation analyst\n{state.valuation_report or '(no output)'}\n",
         f"### Macro analyst\n{state.macro_report or '(no output)'}\n",
         f"### Sentiment analyst\n{state.sentiment_report or '(no output)'}\n",
         "## Proposed factors\n",
