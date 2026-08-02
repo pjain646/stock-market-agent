@@ -28,6 +28,18 @@ MODEL = "claude-opus-4-8"
 _CHARTER_PATH = pathlib.Path(__file__).resolve().parent / "TEAM_CHARTER.md"
 
 
+class UsageLimitError(RuntimeError):
+    """Raised when the CLI reports a call failed at the account/session level
+    (Pro-plan 5-hour usage limit, rate limit, overload), not a per-call fluke.
+
+    Distinct from a generic transient error: retrying immediately cannot
+    succeed (the whole account is blocked, not this one call), so callers
+    must NOT retry-and-continue on this — they should stop the batch and let
+    the caller decide when to resume. See ResultMessage.is_error handling in
+    `_llm_call` below.
+    """
+
+
 def team_charter() -> str:
     """Shared context prepended to every agent's system prompt.
 
@@ -73,6 +85,10 @@ async def _llm_call(prompt: str, system: str, max_turns: int = 6,
         allowed_tools=allowed_tools or [],
         max_turns=max_turns,
         max_budget_usd=budget_usd,
+        # Force OAuth (subscription) auth for the spawned CLI, never metered
+        # API billing, regardless of what's in the caller's shell profile or
+        # keys.local.json. options.env overrides inherited env per-key.
+        env={"ANTHROPIC_API_KEY": ""},
         **({"cwd": cwd} if cwd else {}),
     )
 
@@ -83,6 +99,17 @@ async def _llm_call(prompt: str, system: str, max_turns: int = 6,
             fragments.extend(b.text for b in message.content if isinstance(b, TextBlock))
         elif isinstance(message, ResultMessage):
             cost = message.total_cost_usd
+            # is_error can be True even when subtype/text look fine (observed:
+            # subtype="success" while is_error=True with an empty errors list) —
+            # this is the CLI reporting an account-level block (5-hour Pro-plan
+            # usage limit, rate limit), not a bad answer. Check the flag itself,
+            # not the text, and never retry this locally.
+            if message.is_error:
+                status = getattr(message, "api_error_status", None)
+                raise UsageLimitError(
+                    f"CLI call failed (is_error, api_error_status={status}, "
+                    f"subtype={message.subtype})"
+                )
     return "\n".join(f.strip() for f in fragments).strip(), cost
 
 

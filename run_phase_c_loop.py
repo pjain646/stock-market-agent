@@ -32,6 +32,7 @@ sys.path.insert(0, str(PROJECT_ROOT / "research-methodology" / "scripts"))
 import pandas as pd  # noqa: E402
 
 from core import candidates as candidates_module, config, journal  # noqa: E402
+from core.orchestration import UsageLimitError  # noqa: E402
 from core.labeling import add_forward_direction_label  # noqa: E402
 from core.splits import assign_time_split  # noqa: E402
 from core.evaluator import compare_models, per_industry_eval, walk_forward_eval  # noqa: E402
@@ -181,6 +182,10 @@ YOUR JOB — implement the research manager's SELECTED factor set, EXACTLY:
 1. Read your journal history (below). Build on what worked; do not repeat what failed.
    If a prior single-factor signal showed a real (if weak) mechanism, it's a candidate
    to pair with something uncorrelated now, not to re-test alone.
+   If a bundle in the journal ALREADY has a validated, reproduced score, your job this
+   iteration is NOT to re-implement it verbatim — that confirms nothing new. Propose a
+   bundle the journal has not yet tried: a different combination of axes, or a factor
+   within an axis nobody has tested. Exploration is the job; reproduction is not.
 2. Pick 2-3 factors that each have their own clear ECONOMIC rationale, AND that you
    believe are ORTHOGONAL to each other — each capturing a genuinely different source
    of predictive edge (e.g. one macro/timing factor + one fundamental/quality factor +
@@ -275,6 +280,9 @@ async def run_researcher_session(iteration: int, budget_usd: float,
         allowed_tools=["Read", "Write", "Edit", "Bash", "Glob", "Grep", "Skill"],
         max_budget_usd=budget_usd,            # hard credit cap per iteration
         max_turns=80,
+        # Force OAuth (subscription) auth, never metered API billing — see
+        # the matching comment in core/orchestration/agents.py._llm_call.
+        env={"ANTHROPIC_API_KEY": ""},
     )
 
     session_id, cost = None, None
@@ -289,6 +297,12 @@ async def run_researcher_session(iteration: int, budget_usd: float,
                 session_id, cost = message.session_id, message.total_cost_usd
                 print(f"  researcher session done: subtype={message.subtype}"
                       + (f", cost=${cost:.2f}" if cost else ""))
+                if message.is_error:
+                    status = getattr(message, "api_error_status", None)
+                    raise UsageLimitError(
+                        f"researcher session failed (is_error, "
+                        f"api_error_status={status}, subtype={message.subtype})"
+                    )
     return session_id, cost
 
 
@@ -308,6 +322,9 @@ async def run_reflection(session_id: str, verdict_summary: str, budget_usd: floa
         allowed_tools=[],                     # reflection is thought, not action
         max_budget_usd=budget_usd,
         max_turns=4,
+        # Force OAuth (subscription) auth, never metered API billing — see
+        # the matching comment in core/orchestration/agents.py._llm_call.
+        env={"ANTHROPIC_API_KEY": ""},
     )
     # The resumed session can carry stale state — notably a pending background
     # Bash notification, which the model would otherwise answer INSTEAD of the
@@ -331,6 +348,12 @@ async def run_reflection(session_id: str, verdict_summary: str, budget_usd: floa
             note_fragments.extend(b.text for b in message.content if isinstance(b, TextBlock))
         elif isinstance(message, ResultMessage):
             reflection_cost = message.total_cost_usd
+            if message.is_error:
+                status = getattr(message, "api_error_status", None)
+                raise UsageLimitError(
+                    f"reflection call failed (is_error, api_error_status={status}, "
+                    f"subtype={message.subtype})"
+                )
     note = " ".join(fragment.strip() for fragment in note_fragments).strip()
 
     # Reject a note that answered something other than the verdict rather than
@@ -529,6 +552,18 @@ def main() -> None:
 
         try:
             run_one_iteration(panel, iteration, proposal_dir, arguments)
+        except UsageLimitError as limit_error:
+            # The account itself is blocked (5-hour Pro-plan usage limit, rate
+            # limit) — every remaining iteration would fail the exact same
+            # way. Unlike a transient blip, retrying/continuing here just
+            # burns wall-clock time producing an identical failure per
+            # iteration (observed: 5 back-to-back failures across every call
+            # in the pipeline once this hit). Stop the whole batch now;
+            # whatever already scored is safely in the journal, and the run
+            # can simply be resumed later once the limit window resets.
+            print(f"  ITERATION {iteration}: usage limit hit — stopping batch "
+                  f"(not continuing to remaining iterations): {limit_error}")
+            break
         except Exception as iteration_error:
             # One iteration failing must not kill the batch. Observed: a
             # transient "Connection closed mid-response" on iteration 27 of an
@@ -624,6 +659,11 @@ def run_one_iteration(panel, iteration: int, proposal_dir: pathlib.Path, argumen
                 total_cost = (cost or 0) + reflection_cost
                 journal.record_session_artifacts(experiment_id, cost_usd=total_cost)
                 print(f"  reflection cost: ${reflection_cost:.2f} (iteration total: ${total_cost:.2f})")
+        except UsageLimitError:
+            # Not a "this one note failed" situation — the account is blocked.
+            # Let it propagate so the batch loop stops instead of continuing
+            # on to an iteration that cannot possibly succeed either.
+            raise
         except Exception as reflection_error:
             print(f"  reflection step failed (non-fatal): {reflection_error}")
 

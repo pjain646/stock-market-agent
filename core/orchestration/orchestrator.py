@@ -19,9 +19,9 @@ from __future__ import annotations
 
 import time
 
-from .agents import (bear_researcher, bull_researcher, codex_available,
-                     external_reviewer, fundamental_analyst, macro_analyst,
-                     research_manager, valuation_analyst)
+from .agents import (UsageLimitError, bear_researcher, bull_researcher,
+                     codex_available, external_reviewer, fundamental_analyst,
+                     macro_analyst, research_manager, valuation_analyst)
 from .state import ResearchState
 
 
@@ -93,6 +93,13 @@ async def run_research_pipeline(iteration: int, journal_history: str,
                 log(f"  {label}{retry_note}: {proposal.name if proposal else '?'}{flag} "
                     f"({time.time() - started:.0f}s, ${cost or 0:.2f})")
                 break
+            except UsageLimitError:
+                # The account is blocked, not this one call — a retry cannot
+                # succeed and would just burn another doomed call. Stop the
+                # whole pipeline immediately rather than limping through the
+                # remaining stages, each failing the same way.
+                log(f"  {label}: usage limit hit — aborting pipeline (no retry)")
+                raise
             except Exception as exc:  # one agent failing must not kill the pipeline
                 if attempt == 1:
                     log(f"  {label}: attempt 1 failed ({exc}) — retrying")
@@ -120,6 +127,10 @@ async def run_research_pipeline(iteration: int, journal_history: str,
                     log(f"  debate r{round_index + 1} {label}{retry_note}: "
                         f"{len(state.current_response)} chars (${cost or 0:.2f})")
                     break
+                except UsageLimitError:
+                    log(f"  debate r{round_index + 1} {label}: "
+                        f"usage limit hit — aborting pipeline (no retry)")
+                    raise
                 except Exception as exc:
                     if attempt == 1:
                         log(f"  debate r{round_index + 1} {label}: "
@@ -145,6 +156,9 @@ async def run_research_pipeline(iteration: int, journal_history: str,
         cost = await research_manager(state, per_agent)
         total_cost += cost or 0.0
         log(f"  research manager selected: {state.selected_factors} (${cost or 0:.2f})")
+    except UsageLimitError:
+        log("  research manager: usage limit hit — aborting pipeline (no retry)")
+        raise
     except Exception as exc:
         state.errors.append(f"research manager: {exc}")
         log(f"  research manager: FAILED — {exc}")
