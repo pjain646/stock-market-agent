@@ -28,6 +28,18 @@ MODEL = "claude-opus-4-8"
 _CHARTER_PATH = pathlib.Path(__file__).resolve().parent / "TEAM_CHARTER.md"
 
 
+class UsageLimitError(RuntimeError):
+    """Raised when the CLI reports a call failed at the account/session level
+    (Pro-plan 5-hour usage limit, rate limit, overload), not a per-call fluke.
+
+    Distinct from a generic transient error: retrying immediately cannot
+    succeed (the whole account is blocked, not this one call), so callers
+    must NOT retry-and-continue on this — they should stop the batch and let
+    the caller decide when to resume. See ResultMessage.is_error handling in
+    `_llm_call` below.
+    """
+
+
 def team_charter() -> str:
     """Shared context prepended to every agent's system prompt.
 
@@ -73,6 +85,10 @@ async def _llm_call(prompt: str, system: str, max_turns: int = 6,
         allowed_tools=allowed_tools or [],
         max_turns=max_turns,
         max_budget_usd=budget_usd,
+        # Force OAuth (subscription) auth for the spawned CLI, never metered
+        # API billing, regardless of what's in the caller's shell profile or
+        # keys.local.json. options.env overrides inherited env per-key.
+        env={"ANTHROPIC_API_KEY": ""},
         **({"cwd": cwd} if cwd else {}),
     )
 
@@ -83,6 +99,17 @@ async def _llm_call(prompt: str, system: str, max_turns: int = 6,
             fragments.extend(b.text for b in message.content if isinstance(b, TextBlock))
         elif isinstance(message, ResultMessage):
             cost = message.total_cost_usd
+            # is_error can be True even when subtype/text look fine (observed:
+            # subtype="success" while is_error=True with an empty errors list) —
+            # this is the CLI reporting an account-level block (5-hour Pro-plan
+            # usage limit, rate limit), not a bad answer. Check the flag itself,
+            # not the text, and never retry this locally.
+            if message.is_error:
+                status = getattr(message, "api_error_status", None)
+                raise UsageLimitError(
+                    f"CLI call failed (is_error, api_error_status={status}, "
+                    f"subtype={message.subtype})"
+                )
     return "\n".join(f.strip() for f in fragments).strip(), cost
 
 
@@ -210,6 +237,38 @@ contributes nothing exactly where coverage is missing."""
     state.fundamental_report = report
     state.add_proposal(proposal)
     state.add_turn("fundamental", "Fundamental Analyst", text, cost)
+    return cost
+
+
+async def valuation_analyst(state: ResearchState, budget_usd: float = 1.0):
+    """Owns price-based valuation — a second cross-sectional-capable analyst.
+
+    Split out from the fundamental analyst deliberately: with only one analyst
+    that can rank stocks (fundamental) plus a macro analyst whose factor is one
+    market-wide number that can't rank anything (see TEAM_CHARTER), the manager
+    kept collapsing to a single selected factor — exactly the best-of-N shape
+    campaign 2 exists to avoid. "Is this company run well" (fundamental) and
+    "is this company priced well" (valuation) are different mechanisms, so
+    giving them separate seats lets the team assemble a genuine two-factor
+    cross-sectional bundle instead of one factor plus a macro timer.
+    """
+    prompt = f"""Iteration {state.iteration}. You own the VALUATION axis (price
+relative to fundamentals: earnings yield, book-to-market, FCF yield, and similar
+"is this cheap or expensive" ratios) — NOT profitability, quality, or capital
+discipline, which belong to the Fundamental Analyst.
+
+{state.journal_for("valuation")}
+
+{state.facts_for("valuation")}
+
+Propose ONE valuation factor. Prefer something the journal has NOT exhausted.
+If your factor and the fundamental analyst's factor turn out to be correlated,
+that is the bear's job to raise in debate, not yours to pre-negotiate."""
+    text, cost = await _llm_call(prompt, _system_for(_ANALYST_RULES), budget_usd=budget_usd)
+    proposal, report = _parse_analyst(text, "valuation")
+    state.valuation_report = report
+    state.add_proposal(proposal)
+    state.add_turn("valuation", "Valuation Analyst", text, cost)
     return cost
 
 

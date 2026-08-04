@@ -60,6 +60,28 @@ def fundamental_facts(panel: pd.DataFrame, concept_coverage: dict | None = None)
     return "\n".join(parts)
 
 
+def valuation_facts() -> str:
+    """What the valuation analyst needs: what's actually buildable point-in-time-safe.
+
+    Stated up front rather than left for the analyst to rediscover: P/E is
+    known split-distorted here (July 1 finding), while earnings yield is
+    proven buildable and already shipped once (iteration 21).
+    """
+    return (
+        "VALUATION DATA REALITY:\n"
+        "- pe_ratio is EXCLUDED from the feature set — it is split-distorted "
+        "(adj_close is split-adjusted, EDGAR's reported EPS is not; confirmed "
+        "wrong on AAPL pre-2020-split). Do not propose raw P/E.\n"
+        "- earnings_yield IS proven buildable point-in-time-safe (iteration 21): "
+        "split-adjust shares from EDGAR CommonStockSharesOutstanding, market cap = "
+        "adj_close * shares_adj, earnings_yield = trailing annual net income / "
+        "market cap. See proposals/iteration_21/feature.py for the working code.\n"
+        "- Book-to-market and EV/EBITDA are NOT yet verified buildable here — if "
+        "you propose one, name the EDGAR concepts it needs and flag that coverage "
+        "is unverified rather than assuming it."
+    )
+
+
 # FRED series the bundled fetcher can retrieve, with the axis each represents.
 # Listed rather than fetched: the set is stable, and the macro analyst's real
 # need is "what CAN I ask for", not the observation counts.

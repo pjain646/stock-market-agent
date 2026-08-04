@@ -221,10 +221,18 @@ def _clip(text: str, limit: int) -> str:
 # Keyword -> axis, for role-filtered journal views. Deliberately matched against
 # BOTH signal_name and feature_columns, since a bundle's name may not mention
 # every leg it carries.
+#
+# "fundamental" and "valuation" were one bucket until the team split into two
+# analysts (see TEAM_CHARTER): "value"/"ey_" moved out of fundamental into their
+# own axis so the valuation analyst's journal slice isn't the profitability/
+# quality history that belongs to a different seat. "earnings" stays under
+# fundamental (it tags earnings_stability / pead_earnings_surprise, which are
+# about profitability, not price) rather than moving to valuation.
 _AXIS_KEYWORDS = {
-    "fundamental": ("disc", "profmom", "quality", "value", "gp_", "grossprofit",
-                    "asset", "payout", "earnings", "accrual", "fcf", "piotroski",
-                    "roa", "profitability", "noa", "dividend", "stability", "ey_"),
+    "fundamental": ("disc", "profmom", "quality", "gp_", "grossprofit",
+                    "asset", "payout", "earnings", "accrual", "piotroski",
+                    "roa", "profitability", "noa", "dividend", "stability"),
+    "valuation": ("value", "ey_", "pe_ratio", "book_to_market", "fcf", "ev_ebitda"),
     "macro": ("macro", "rate", "credit", "spread", "vix", "duration", "curve",
               "slope", "regime", "financial_conditions", "yield"),
 }

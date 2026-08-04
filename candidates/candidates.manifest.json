@@ -1,0 +1,9 @@
+{
+  "signals_used": [
+    {
+      "signal_name": "solvency_profmom_macro_bundle",
+      "tested_score": 0.0751
+    }
+  ],
+  "n_candidates": 154
+}

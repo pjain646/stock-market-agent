@@ -32,6 +32,7 @@ sys.path.insert(0, str(PROJECT_ROOT / "research-methodology" / "scripts"))
 import pandas as pd  # noqa: E402
 
 from core import candidates as candidates_module, config, journal  # noqa: E402
+from core.orchestration import UsageLimitError  # noqa: E402
 from core.labeling import add_forward_direction_label  # noqa: E402
 from core.splits import assign_time_split  # noqa: E402
 from core.evaluator import compare_models, per_industry_eval, walk_forward_eval  # noqa: E402
@@ -151,16 +152,47 @@ def researcher_prompt(iteration: int, journal_history: str,
     prompt still owns the implementation, so the feature contract, smoke-test,
     and evaluation path are unchanged either way.
     """
-    brief_block = f"""
-YOUR RESEARCH TEAM HAS ALREADY MET. Their decision is binding for this iteration:
+    # Two modes, two DIFFERENT jobs — kept from contradicting each other, which
+    # was the bug: in --multi-agent mode the researcher is an ENGINEER (implement
+    # the manager's exact set), in solo mode it's the ANALYST (pick its own
+    # bundle). Previously both prompts told it to "propose a bundle of 2-3", so
+    # when the manager selected 1 factor the researcher re-bundled to obey the
+    # standing instruction — overriding the team's decision.
+    if team_brief:
+        job_block = f"""YOUR RESEARCH TEAM HAS ALREADY MET AND DECIDED. Their ruling
+is binding — you are the ENGINEER this iteration, not the analyst.
 
 {team_brief}
 
-Implement exactly the factor set the research manager selected. Do not add
-factors they rejected, and do not silently substitute a different mechanism —
-if the manager's selection turns out to be unbuildable point-in-time-safe, say
-so plainly in your code comments and implement the buildable subset.
-""" if team_brief else ""
+YOUR JOB — implement the research manager's SELECTED factor set, EXACTLY:
+
+1. Build precisely the factors the manager selected — no more, no fewer. If they
+   selected one factor, build ONE factor; if two, build TWO. Do NOT add any factor
+   the manager dropped (a macro leg they rejected, a redundant axis) even if a
+   prior iteration's bundle used it and scored well. Re-adding dropped factors
+   overrides the team's decision and defeats the entire multi-agent process — it
+   is the single most important rule this iteration.
+   The ONLY permitted deviation: if a selected factor is genuinely unbuildable
+   point-in-time-safe, say so plainly in your code comments and implement the
+   buildable subset — never silently substitute a different mechanism."""
+    else:
+        job_block = """YOUR JOB THIS ITERATION — propose and implement a BUNDLE of
+2-3 ORTHOGONAL factors, tested together as ONE combined model:
+
+1. Read your journal history (below). Build on what worked; do not repeat what failed.
+   If a prior single-factor signal showed a real (if weak) mechanism, it's a candidate
+   to pair with something uncorrelated now, not to re-test alone.
+   If a bundle in the journal ALREADY has a validated, reproduced score, your job this
+   iteration is NOT to re-implement it verbatim — that confirms nothing new. Propose a
+   bundle the journal has not yet tried: a different combination of axes, or a factor
+   within an axis nobody has tested. Exploration is the job; reproduction is not.
+2. Pick 2-3 factors that each have their own clear ECONOMIC rationale, AND that you
+   believe are ORTHOGONAL to each other — each capturing a genuinely different source
+   of predictive edge (e.g. one macro/timing factor + one fundamental/quality factor +
+   one price/momentum factor), not three variations on the same idea. State explicitly
+   why you believe each pair is low-correlation, not just why each factor alone might work.
+   Two genuinely orthogonal factors beats three overlapping ones — do not pad the bundle
+   just to hit 3."""
 
     return f"""You are the researcher in an automated quant research loop. This is iteration {iteration}.
 Work under the research-methodology skill's discipline at all times.
@@ -168,24 +200,12 @@ Work under the research-methodology skill's discipline at all times.
 CAMPAIGN CONTEXT: the first campaign's best single signal (validation +0.0521)
 FAILED Gate 1 on the sealed holdout (-0.0118). A best-of-N search over single
 signals is a noisy max — it finds artifacts that look real in validation and
-don't generalize. The fix: stop searching for one winning signal. Propose
-BUNDLES of orthogonal factors instead, tested together as one combined model.
-The universe was also expanded (~166 liquid names across 11 sectors, up from
-24 across 3) to raise the effective sample size behind every score.
-{brief_block}
-YOUR JOB THIS ITERATION — propose and implement a BUNDLE of 2-3 ORTHOGONAL factors,
-tested together as ONE combined model:
+don't generalize. The fix is orthogonal factor bundles tested as one model. The
+universe was also expanded (~166 liquid names across 11 sectors) to raise the
+effective sample size behind every score.
 
-1. Read your journal history (below). Build on what worked; do not repeat what failed.
-   If a prior single-factor signal showed a real (if weak) mechanism, it's a candidate
-   to pair with something uncorrelated now, not to re-test alone.
-2. Pick 2-3 factors that each have their own clear ECONOMIC rationale, AND that you
-   believe are ORTHOGONAL to each other — each capturing a genuinely different source
-   of predictive edge (e.g. one macro/timing factor + one fundamental/quality factor +
-   one price/momentum factor), not three variations on the same idea. State explicitly
-   why you believe each pair is low-correlation, not just why each factor alone might work.
-   Two genuinely orthogonal factors beats three overlapping ones — do not pad the bundle
-   just to hit 3.
+{job_block}
+
    - The labeled panel is at data_cache/panel.pkl (relative to your cwd, which IS the
      project root) — a pickled pandas DataFrame with columns [date, ticker, industry,
      adj_close, label, forward_return, split]. label = did the price rise over the next
@@ -216,7 +236,8 @@ HARD BOUNDARIES:
   holdout rows. The deterministic judge runs after you finish; its verdict lands in the
   journal for your next iteration. It scores your whole bundle as ONE model, not
   factor-by-factor — there is no partial credit for one good factor in a weak bundle.
-- Propose a BUNDLE of 2-3 orthogonal factors, not a single signal.
+- {"Implement the manager's EXACT selected set — do not add or drop factors." if team_brief
+    else "Propose a BUNDLE of 2-3 orthogonal factors, not a single signal."}
 - Keep the feature code self-contained: imports, SIGNAL_NAME, HYPOTHESIS, add_feature.
 
 YOUR JOURNAL SO FAR:
@@ -224,31 +245,15 @@ YOUR JOURNAL SO FAR:
 """
 
 
-def _transcript_lines(message) -> list[str]:
-    """Render one SDK assistant message as readable transcript lines."""
-    from claude_agent_sdk import AssistantMessage, TextBlock, ThinkingBlock, ToolUseBlock
-
-    lines = []
-    if isinstance(message, AssistantMessage):
-        for block in message.content:
-            if isinstance(block, TextBlock):
-                lines.append(f"**researcher:** {block.text}\n")
-            elif isinstance(block, ToolUseBlock):
-                compact_input = json.dumps(block.input)[:400]
-                lines.append(f"- tool `{block.name}`: {compact_input}\n")
-            elif isinstance(block, ThinkingBlock):
-                lines.append(f"<details><summary>thinking</summary>\n\n{block.thinking}\n</details>\n")
-    return lines
-
-
 async def run_researcher_session(iteration: int, budget_usd: float,
-                                 transcript_path: pathlib.Path,
                                  team_brief: str = "") -> tuple[str | None, float | None]:
     """One researcher session via the Claude Agent SDK (the only SDK-aware function).
 
-    Writes the full session transcript (visible reasoning + tool calls) to
-    `transcript_path` and returns (session_id, cost_usd) so the verdict can be
-    fed back into the same session for a reflection note.
+    Returns (session_id, cost_usd) so the verdict can be fed back into the
+    same session for a reflection note. The session's reasoning/tool-call
+    trace is not persisted: the journal already keeps the parts that matter
+    (feature.py, hypothesis, reflection, score), and the raw transcript had
+    no other reader — nothing in the pipeline consumed it.
     """
     from claude_agent_sdk import ClaudeAgentOptions, ResultMessage, query
 
@@ -259,20 +264,25 @@ async def run_researcher_session(iteration: int, budget_usd: float,
         allowed_tools=["Read", "Write", "Edit", "Bash", "Glob", "Grep", "Skill"],
         max_budget_usd=budget_usd,            # hard credit cap per iteration
         max_turns=80,
+        # Force OAuth (subscription) auth, never metered API billing — see
+        # the matching comment in core/orchestration/agents.py._llm_call.
+        env={"ANTHROPIC_API_KEY": ""},
     )
 
     session_id, cost = None, None
-    with transcript_path.open("w") as transcript_file:
-        transcript_file.write(f"# Researcher session — iteration {iteration}\n\n")
-        async for message in query(
-                prompt=researcher_prompt(iteration, journal.journal_markdown(), team_brief),
-                options=options):
-            for line in _transcript_lines(message):
-                transcript_file.write(line + "\n")
-            if isinstance(message, ResultMessage):
-                session_id, cost = message.session_id, message.total_cost_usd
-                print(f"  researcher session done: subtype={message.subtype}"
-                      + (f", cost=${cost:.2f}" if cost else ""))
+    async for message in query(
+            prompt=researcher_prompt(iteration, journal.journal_markdown(), team_brief),
+            options=options):
+        if isinstance(message, ResultMessage):
+            session_id, cost = message.session_id, message.total_cost_usd
+            print(f"  researcher session done: subtype={message.subtype}"
+                  + (f", cost=${cost:.2f}" if cost else ""))
+            if message.is_error:
+                status = getattr(message, "api_error_status", None)
+                raise UsageLimitError(
+                    f"researcher session failed (is_error, "
+                    f"api_error_status={status}, subtype={message.subtype})"
+                )
     return session_id, cost
 
 
@@ -292,6 +302,9 @@ async def run_reflection(session_id: str, verdict_summary: str, budget_usd: floa
         allowed_tools=[],                     # reflection is thought, not action
         max_budget_usd=budget_usd,
         max_turns=4,
+        # Force OAuth (subscription) auth, never metered API billing — see
+        # the matching comment in core/orchestration/agents.py._llm_call.
+        env={"ANTHROPIC_API_KEY": ""},
     )
     # The resumed session can carry stale state — notably a pending background
     # Bash notification, which the model would otherwise answer INSTEAD of the
@@ -315,6 +328,12 @@ async def run_reflection(session_id: str, verdict_summary: str, budget_usd: floa
             note_fragments.extend(b.text for b in message.content if isinstance(b, TextBlock))
         elif isinstance(message, ResultMessage):
             reflection_cost = message.total_cost_usd
+            if message.is_error:
+                status = getattr(message, "api_error_status", None)
+                raise UsageLimitError(
+                    f"reflection call failed (is_error, api_error_status={status}, "
+                    f"subtype={message.subtype})"
+                )
     note = " ".join(fragment.strip() for fragment in note_fragments).strip()
 
     # Reject a note that answered something other than the verdict rather than
@@ -511,112 +530,159 @@ def main() -> None:
         proposal_dir = PROPOSALS_DIR / f"iteration_{iteration}"
         proposal_dir.mkdir(parents=True, exist_ok=True)
 
-        transcript_path = proposal_dir / "session_transcript.md"
-
-        # Multi-agent phase (optional): the research team decides WHAT to build,
-        # then the researcher session below implements it. Splitting the budget
-        # keeps --budget-usd a true per-iteration cap across both phases.
-        team_brief, team_cost = "", 0.0
-        if arguments.multi_agent:
-            from core.orchestration import conversation_json, render_transcript, run_research_pipeline
-
-            print("  [multi-agent] research team convening")
-            from core.orchestration import context as agent_context
-
-            # Per-role context: each agent reads only its own slice of the
-            # journal plus the grounding facts its axis needs. Sending every
-            # agent the full digest cost ~47k tokens/iteration; this is ~5k.
-            rejected = journal.rejected_factors_digest()
-            role_journals = {
-                role: (journal.journal_digest_for_role(role)
-                       + ("\n\n" + rejected if rejected else ""))
-                for role in ("fundamental", "macro", "bull", "bear", "manager")
-            }
-            # Concept coverage is hash-keyed on the ticker set, so this is a
-            # ~2min compute the first time a universe is seen and instant after.
-            # It exists because iteration 24 built a gross-profitability factor
-            # without knowing GrossProfit is filed by only 42% of the universe.
-            role_facts = {
-                "fundamental": agent_context.fundamental_facts(
-                    panel, agent_context.compute_concept_coverage(panel)),
-                "macro": agent_context.macro_series_facts(),
-                "bear": agent_context.bear_facts([]),
-            }
-
-            team_state, team_cost = asyncio.run(run_research_pipeline(
-                iteration=iteration,
-                # Shared fallback only; role_journals above is what agents read.
-                journal_history=journal.journal_digest(),
-                role_journals=role_journals,
-                role_facts=role_facts,
-                debate_rounds=arguments.debate_rounds,
-                budget_usd=arguments.budget_usd * 0.4,
-            ))
-            (proposal_dir / "team_transcript.md").write_text(render_transcript(team_state))
-            (proposal_dir / "team_conversation.json").write_text(
-                conversation_json(team_state, team_cost))
-            team_brief = team_state.manager_decision
-
-        session_id, cost = asyncio.run(
-            run_researcher_session(iteration, arguments.budget_usd - team_cost,
-                                   transcript_path, team_brief=team_brief)
-        )
-        cost = (cost or 0.0) + team_cost
-
-        feature_code_path = proposal_dir / "feature.py"
-        if not feature_code_path.exists():
-            print("  researcher did not produce feature.py — skipping evaluation")
+        try:
+            run_one_iteration(panel, iteration, proposal_dir, arguments)
+        except UsageLimitError as limit_error:
+            # The account itself is blocked (5-hour Pro-plan usage limit, rate
+            # limit) — every remaining iteration would fail the exact same
+            # way. Unlike a transient blip, retrying/continuing here just
+            # burns wall-clock time producing an identical failure per
+            # iteration (observed: 5 back-to-back failures across every call
+            # in the pipeline once this hit). Stop the whole batch now;
+            # whatever already scored is safely in the journal, and the run
+            # can simply be resumed later once the limit window resets.
+            print(f"  ITERATION {iteration}: usage limit hit — stopping batch "
+                  f"(not continuing to remaining iterations): {limit_error}")
+            break
+        except Exception as iteration_error:
+            # One iteration failing must not kill the batch. Observed: a
+            # transient "Connection closed mid-response" on iteration 27 of an
+            # 8-iteration run aborted the whole thing, losing the 5 iterations
+            # that had not started yet. Anything already scored is safely in the
+            # journal; the next iteration starts clean.
+            print(f"  ITERATION {iteration} FAILED (continuing): {iteration_error}")
             continue
-        experiment_id, metrics = evaluate_proposal(panel, feature_code_path, iteration)
-        journal.record_session_artifacts(
-            experiment_id, transcript_path=str(transcript_path.relative_to(PROJECT_ROOT)),
-            cost_usd=cost,
-        )
-
-        # Feed the verdict back to the same session for a short journal reflection.
-        if metrics is not None and session_id is not None:
-            verdict_summary = json.dumps(metrics)
-            try:
-                note, reflection_cost = asyncio.run(run_reflection(session_id, verdict_summary))
-                if note:
-                    journal.record_researcher_notes(experiment_id, note)
-                    print(f"  reflection: {note[:160]}{'...' if len(note) > 160 else ''}")
-                # Roll reflection cost into the experiment's recorded cost, so
-                # cost_usd reflects the FULL spend for this iteration, not just
-                # the main research session (this was silently undercounting).
-                if reflection_cost:
-                    total_cost = (cost or 0) + reflection_cost
-                    journal.record_session_artifacts(experiment_id, cost_usd=total_cost)
-                    print(f"  reflection cost: ${reflection_cost:.2f} (iteration total: ${total_cost:.2f})")
-            except Exception as reflection_error:
-                print(f"  reflection step failed (non-fatal): {reflection_error}")
-
-        # Push after EVERY iteration, not once at the end — a crash/timeout on
-        # iteration 9 of 12 shouldn't cost iterations 1-8 too (learned this the
-        # expensive way tonight: a failed once-at-the-end push discarded two
-        # full paid research sessions).
-        if arguments.push:
-            push_results_to_git()
 
     print("\nJOURNAL:")
     print(journal.journal_markdown())
+    return
 
 
-def push_results_to_git() -> None:
-    """Commit journal + proposals and push, so the deployed dashboard updates."""
+def run_one_iteration(panel, iteration: int, proposal_dir: pathlib.Path, arguments) -> None:
+    """One full research iteration: team -> researcher -> judge -> reflection."""
+
+    # Multi-agent phase (optional): the research team decides WHAT to build,
+    # then the researcher session below implements it. Splitting the budget
+    # keeps --budget-usd a true per-iteration cap across both phases.
+    team_brief, team_cost = "", 0.0
+    if arguments.multi_agent:
+        from core.orchestration import conversation_json, render_transcript, run_research_pipeline
+
+        print("  [multi-agent] research team convening")
+        from core.orchestration import context as agent_context
+
+        # Per-role context: each agent reads only its own slice of the
+        # journal plus the grounding facts its axis needs. Sending every
+        # agent the full digest cost ~47k tokens/iteration; this is ~5k.
+        rejected = journal.rejected_factors_digest()
+        role_journals = {
+            role: (journal.journal_digest_for_role(role)
+                   + ("\n\n" + rejected if rejected else ""))
+            for role in ("fundamental", "valuation", "macro", "bull", "bear", "manager")
+        }
+        # Concept coverage is hash-keyed on the ticker set, so this is a
+        # ~2min compute the first time a universe is seen and instant after.
+        # It exists because iteration 24 built a gross-profitability factor
+        # without knowing GrossProfit is filed by only 42% of the universe.
+        role_facts = {
+            "fundamental": agent_context.fundamental_facts(
+                panel, agent_context.compute_concept_coverage(panel)),
+            "valuation": agent_context.valuation_facts(),
+            "macro": agent_context.macro_series_facts(),
+            "bear": agent_context.bear_facts([]),
+        }
+
+        team_state, team_cost = asyncio.run(run_research_pipeline(
+            iteration=iteration,
+            # Shared fallback only; role_journals above is what agents read.
+            journal_history=journal.journal_digest(),
+            role_journals=role_journals,
+            role_facts=role_facts,
+            debate_rounds=arguments.debate_rounds,
+            budget_usd=arguments.budget_usd * 0.4,
+        ))
+        (proposal_dir / "team_transcript.md").write_text(render_transcript(team_state))
+        (proposal_dir / "team_conversation.json").write_text(
+            conversation_json(team_state, team_cost))
+        team_brief = team_state.manager_decision
+
+    session_id, cost = asyncio.run(
+        run_researcher_session(iteration, arguments.budget_usd - team_cost,
+                               team_brief=team_brief)
+    )
+    cost = (cost or 0.0) + team_cost
+
+    feature_code_path = proposal_dir / "feature.py"
+    if not feature_code_path.exists():
+        print("  researcher did not produce feature.py — skipping evaluation")
+        return
+    experiment_id, metrics = evaluate_proposal(panel, feature_code_path, iteration)
+    journal.record_session_artifacts(experiment_id, cost_usd=cost)
+
+    # Feed the verdict back to the same session for a short journal reflection.
+    if metrics is not None and session_id is not None:
+        verdict_summary = json.dumps(metrics)
+        try:
+            note, reflection_cost = asyncio.run(run_reflection(session_id, verdict_summary))
+            if note:
+                journal.record_researcher_notes(experiment_id, note)
+                print(f"  reflection: {note[:160]}{'...' if len(note) > 160 else ''}")
+            # Roll reflection cost into the experiment's recorded cost, so
+            # cost_usd reflects the FULL spend for this iteration, not just
+            # the main research session (this was silently undercounting).
+            if reflection_cost:
+                total_cost = (cost or 0) + reflection_cost
+                journal.record_session_artifacts(experiment_id, cost_usd=total_cost)
+                print(f"  reflection cost: ${reflection_cost:.2f} (iteration total: ${total_cost:.2f})")
+        except UsageLimitError:
+            # Not a "this one note failed" situation — the account is blocked.
+            # Let it propagate so the batch loop stops instead of continuing
+            # on to an iteration that cannot possibly succeed either.
+            raise
+        except Exception as reflection_error:
+            print(f"  reflection step failed (non-fatal): {reflection_error}")
+
+    # Push after EVERY iteration, not once at the end — a crash/timeout on
+    # iteration 9 of 12 shouldn't cost iterations 1-8 too (learned this the
+    # expensive way tonight: a failed once-at-the-end push discarded two
+    # full paid research sessions).
+    if arguments.push:
+        push_results_to_git(iteration)
+
+
+def push_results_to_git(iteration: int | None = None) -> None:
+    """Commit ONLY the iteration's data and push, so the deployed dashboard updates.
+
+    Deliberately scoped to `journal.db` and `proposals/` and nothing else: local
+    code changes (dashboard tweaks, orchestration edits, anything uncommitted)
+    are NEVER staged or pushed by a run. This lets a research run keep the
+    deployed dashboard current without dragging along in-progress code — the two
+    concerns stay separate. There is intentionally no `git pull --rebase` here:
+    it would fail on unstaged local code changes, and for a solo run the remote
+    only advances via these pushes, so each push is a clean fast-forward.
+    """
     import subprocess
 
-    subprocess.run(["git", "add", "journal.db", "proposals"], cwd=PROJECT_ROOT, check=True)
-    commit = subprocess.run(
-        ["git", "commit", "-m", "research run: update journal + proposals"],
-        cwd=PROJECT_ROOT, capture_output=True, text=True,
-    )
+    def git(*args):
+        return subprocess.run(["git", *args], cwd=PROJECT_ROOT,
+                              capture_output=True, text=True)
+
+    # Stage exactly the two data paths. `--` guards against a path ever being
+    # read as a flag; .gitignore already excludes oos_rows.csv and _partial/.
+    git("add", "--", "journal.db", "proposals")
+
+    message = (f"research run: iteration {iteration}" if iteration is not None
+               else "research run: update journal + proposals")
+    # Commit ONLY those pathspecs — even if something else were somehow staged,
+    # a pathspec commit ignores it, so code can't leak into a research commit.
+    commit = git("commit", "-m", message, "--", "journal.db", "proposals")
     if commit.returncode != 0:
-        print(f"nothing to push ({commit.stdout.strip() or commit.stderr.strip()})")
+        print(f"  nothing to push ({commit.stdout.strip() or commit.stderr.strip()})")
         return
-    push = subprocess.run(["git", "push"], cwd=PROJECT_ROOT, capture_output=True, text=True)
-    print("pushed — deployed dashboard will refresh" if push.returncode == 0
-          else f"push failed: {push.stderr.strip()}")
+    push = git("push")
+    print("  pushed — deployed dashboard will refresh" if push.returncode == 0
+          else f"  push failed (data committed locally, will retry next iteration): "
+               f"{push.stderr.strip()}")
 
 
 if __name__ == "__main__":

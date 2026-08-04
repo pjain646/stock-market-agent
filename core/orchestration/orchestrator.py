@@ -3,8 +3,8 @@
 Flow (PrimoAgent's linear pipeline + TradingAgents' bounded debate loop):
 
     fundamental ─┐
-    macro       ─┼─> [analyst team, sequential] ─> bull <-> bear (N rounds)
-    sentiment   ─┘                                      │
+    valuation   ─┼─> [analyst team, sequential] ─> bull <-> bear (N rounds)
+    macro       ─┘                                      │
                                                         v
                                                  research manager
                                                         │
@@ -19,9 +19,9 @@ from __future__ import annotations
 
 import time
 
-from .agents import (bear_researcher, bull_researcher, codex_available,
-                     external_reviewer, fundamental_analyst, macro_analyst,
-                     research_manager)
+from .agents import (UsageLimitError, bear_researcher, bull_researcher,
+                     codex_available, external_reviewer, fundamental_analyst,
+                     macro_analyst, research_manager, valuation_analyst)
 from .state import ResearchState
 
 
@@ -55,7 +55,7 @@ async def run_research_pipeline(iteration: int, journal_history: str,
     # on budget the moment they start — which is exactly what happened with the
     # original 0.25 floor. This is a CAP, not an allocation; observed spend is
     # ~$0.10-0.25 per agent, so the team lands well under it in practice.
-    n_agents = 2 + (2 * debate_rounds) + 1
+    n_agents = 3 + (2 * debate_rounds) + 1
     per_agent = max(budget_usd / n_agents, 0.90)
 
     # No sentiment analyst here, by design. Sentiment is deliberately NOT a
@@ -64,8 +64,16 @@ async def run_research_pipeline(iteration: int, journal_history: str,
     # slice and then weighed against decade-long fundamentals as equal evidence.
     # It lives instead in core/live_sentiment.py as a PREDICTION-TIME
     # annotation, where no history is needed and no backtest can be tainted.
+    #
+    # Three analysts, not two: fundamental (quality/profitability) and
+    # valuation (price-based) are split into separate seats so the team has
+    # TWO cross-sectional-capable analysts. Macro's factor is a single
+    # market-wide number that can't rank stocks (see TEAM_CHARTER), so on its
+    # own it can't supply the second leg of a real bundle — with only one
+    # ranking-capable analyst the manager kept collapsing to a single factor.
     stages = [
         ("fundamental analyst", lambda: fundamental_analyst(state, per_agent)),
+        ("valuation analyst", lambda: valuation_analyst(state, per_agent)),
         ("macro analyst", lambda: macro_analyst(state, per_agent)),
     ]
 
@@ -85,6 +93,13 @@ async def run_research_pipeline(iteration: int, journal_history: str,
                 log(f"  {label}{retry_note}: {proposal.name if proposal else '?'}{flag} "
                     f"({time.time() - started:.0f}s, ${cost or 0:.2f})")
                 break
+            except UsageLimitError:
+                # The account is blocked, not this one call — a retry cannot
+                # succeed and would just burn another doomed call. Stop the
+                # whole pipeline immediately rather than limping through the
+                # remaining stages, each failing the same way.
+                log(f"  {label}: usage limit hit — aborting pipeline (no retry)")
+                raise
             except Exception as exc:  # one agent failing must not kill the pipeline
                 if attempt == 1:
                     log(f"  {label}: attempt 1 failed ({exc}) — retrying")
@@ -93,17 +108,36 @@ async def run_research_pipeline(iteration: int, journal_history: str,
                 log(f"  {label}: FAILED after retry — {exc}")
 
     # Bounded debate: bull opens, bear responds, repeat.
+    #
+    # Retried on the same terms as the analysts. A lost BEAR is the worst
+    # single failure this pipeline can have: the manager then rules on a bull
+    # argument with no adversarial case against it, which is precisely the
+    # "failed debate" the charter warns about — and it fails silently, looking
+    # like a normal iteration. Observed once in iteration 27 on a transient
+    # error (a plain CLI probe succeeded seconds later), so these are worth
+    # one more attempt rather than losing the review entirely.
     for round_index in range(debate_rounds):
         for label, fn in (("bull", lambda: bull_researcher(state, per_agent)),
                           ("bear", lambda: bear_researcher(state, per_agent))):
-            try:
-                cost = await fn()
-                total_cost += cost or 0.0
-                log(f"  debate r{round_index + 1} {label}: "
-                    f"{len(state.current_response)} chars (${cost or 0:.2f})")
-            except Exception as exc:
-                state.errors.append(f"debate {label}: {exc}")
-                log(f"  debate r{round_index + 1} {label}: FAILED — {exc}")
+            for attempt in (1, 2):
+                try:
+                    cost = await fn()
+                    total_cost += cost or 0.0
+                    retry_note = " (retry)" if attempt == 2 else ""
+                    log(f"  debate r{round_index + 1} {label}{retry_note}: "
+                        f"{len(state.current_response)} chars (${cost or 0:.2f})")
+                    break
+                except UsageLimitError:
+                    log(f"  debate r{round_index + 1} {label}: "
+                        f"usage limit hit — aborting pipeline (no retry)")
+                    raise
+                except Exception as exc:
+                    if attempt == 1:
+                        log(f"  debate r{round_index + 1} {label}: "
+                            f"attempt 1 failed ({exc}) — retrying")
+                        continue
+                    state.errors.append(f"debate {label}: {exc}")
+                    log(f"  debate r{round_index + 1} {label}: FAILED after retry — {exc}")
 
     # Cross-model second opinion before the manager rules. Optional and
     # non-fatal: it bills to a ChatGPT subscription rather than this plan, so
@@ -122,6 +156,9 @@ async def run_research_pipeline(iteration: int, journal_history: str,
         cost = await research_manager(state, per_agent)
         total_cost += cost or 0.0
         log(f"  research manager selected: {state.selected_factors} (${cost or 0:.2f})")
+    except UsageLimitError:
+        log("  research manager: usage limit hit — aborting pipeline (no retry)")
+        raise
     except Exception as exc:
         state.errors.append(f"research manager: {exc}")
         log(f"  research manager: FAILED — {exc}")
@@ -174,6 +211,7 @@ def render_transcript(state: ResearchState) -> str:
         f"# Multi-agent research pipeline — iteration {state.iteration}\n",
         "## Analyst team\n",
         f"### Fundamental analyst\n{state.fundamental_report or '(no output)'}\n",
+        f"### Valuation analyst\n{state.valuation_report or '(no output)'}\n",
         f"### Macro analyst\n{state.macro_report or '(no output)'}\n",
         f"### Sentiment analyst\n{state.sentiment_report or '(no output)'}\n",
         "## Proposed factors\n",

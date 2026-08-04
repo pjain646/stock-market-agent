@@ -5,6 +5,7 @@ research manager) and PrimoAgent (dedicated news-intelligence agent emitting
 quantified features), reimplemented on the Claude Agent SDK this project already
 uses. See agents.py for why the debate was retargeted at generalization risk.
 """
+from .agents import UsageLimitError
 from .orchestrator import conversation_json, render_transcript, run_research_pipeline
 from .state import FactorProposal, ResearchState, Turn
 
@@ -15,4 +16,5 @@ __all__ = [
     "ResearchState",
     "FactorProposal",
     "Turn",
+    "UsageLimitError",
 ]
