@@ -119,6 +119,19 @@ you have no information about that and neither does anyone else in the room.
   team has two analysts who can actually rank stocks (Fundamental, Valuation)
   and why the Manager should not treat dropping down to fundamental-plus-macro
   as equivalent to keeping two real cross-sectional legs.
+- **Two Gate-1-passed bundles that share legs do not compound (2026-08-03).**
+  `solvency_profmom_macro_bundle` (validation +0.0751) and
+  `solvency_insider_macro_bundle` (validation +0.0753) both passed the
+  holdout individually, but they share their solvency AND macro legs
+  verbatim — only the third leg differs (profitability momentum vs. insider
+  buying). Walk-forward-testing them combined scored +0.0749: statistically
+  flat versus either alone, not additive. Combining proven signals for the
+  live candidate model is only a real diversification win if their legs are
+  actually distinct — reusing a leg across bundles just duplicates that
+  leg's information rather than adding a second one. When proposing a new
+  bundle, check its legs against EVERY signal that has already passed Gate 1
+  (not just the validation leaderboard), and prefer a genuinely new leg over
+  reusing a proven one, even if reusing scores marginally higher.
 
 ## How to argue
 
