@@ -1,6 +1,11 @@
 # Core research pipeline
-pandas==2.3.0
-numpy==2.3.1
+# pandas/numpy versions confirmed via PyPI's API to be the first patch of
+# each with a prebuilt cp314 (Python 3.14) wheel - the exact previous pins
+# (pandas==2.3.0, numpy==2.3.1) had none, forcing a from-source numpy build
+# on Streamlit Cloud's Python 3.14.6 sandbox and hanging the deploy for
+# 45+ minutes. scipy/scikit-learn already had cp314 wheels at their pins.
+pandas==2.3.3
+numpy==2.3.2
 scipy==1.18.0
 scikit-learn==1.9.0
 yfinance==1.4.1
