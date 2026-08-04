@@ -10,5 +10,9 @@ requests==2.32.4
 streamlit==1.59.0
 altair==6.2.2
 
-# Agent loop (local / CI runs; not needed by the dashboard itself)
-claude-agent-sdk==0.2.110
+# Agent loop (local / CI runs only - the dashboard never imports this).
+# Deliberately NOT installed here: it has no prebuilt wheel yet for newer
+# Python versions, which was hanging the Streamlit Cloud build indefinitely
+# on a package the deployed dashboard doesn't even use.
+# Install separately to run the research loop locally:
+#   pip install claude-agent-sdk==0.2.110
