@@ -5,8 +5,8 @@ Per experiment it shows the three things Preyansh asked for:
   1. the exact feature tested (the real code),
   2. why it was chosen (the researcher's hypothesis + post-verdict reflection),
   3. the exact out-of-sample rows behind the score, previewable and downloadable.
-Plus: a Run tab that launches the researcher from the browser (local machine
-for now; becomes a GitHub Actions trigger once deployed), and a glossary.
+Read-only: the research loop runs from the CLI (`python3 run_phase_c_loop.py`),
+not from this dashboard.
 
 Look & feel: black-and-white shadcn aesthetic (per Preyansh's reference UIs):
 white canvas, soft layered shadows, one inverse "hero" card, monochrome badges
@@ -18,13 +18,9 @@ Run:  streamlit run dashboard.py
 from __future__ import annotations
 
 import json
-import os
 import pathlib
 import re
 import sqlite3
-import subprocess
-import sys
-from datetime import datetime
 
 import altair as alt
 import pandas as pd
@@ -34,8 +30,6 @@ from core import monetary_metric
 
 PROJECT_ROOT = pathlib.Path(__file__).resolve().parent
 JOURNAL_DB = PROJECT_ROOT / "journal.db"
-RUN_STATE_PATH = PROJECT_ROOT / "data_cache" / "run_state.json"
-RUN_LOGS_DIR = PROJECT_ROOT / "data_cache" / "run_logs"
 
 st.set_page_config(page_title="Market Research Agent", layout="wide")
 
@@ -270,77 +264,6 @@ def badge(text: str, tone: str = "muted") -> str:
     return f'<span class="sc-badge sc-badge-{tone}">{_escape_dollar(text)}</span>'
 
 
-# ------------------------------------------------------------- run controls
-def load_run_state() -> dict | None:
-    if RUN_STATE_PATH.exists():
-        return json.loads(RUN_STATE_PATH.read_text())
-    return None
-
-
-def run_is_alive(state: dict | None) -> bool:
-    if not state:
-        return False
-    try:
-        os.kill(state["pid"], 0)  # signal 0 = existence check only
-        return True
-    except (OSError, ProcessLookupError):
-        return False
-
-
-def run_controls_unlocked() -> bool:
-    """Gate the run-launch and holdout-open controls behind a shared passcode.
-
-    Local `streamlit run dashboard.py` has no ADMIN_PASSCODE secret configured,
-    so it stays open (localhost, trusted use). Once deployed publicly (per
-    README: share.streamlit.io), set ADMIN_PASSCODE in the app's secrets —
-    every visitor without it is left read-only on the rest of the dashboard.
-    """
-    try:
-        required_passcode = st.secrets.get("ADMIN_PASSCODE")
-    except Exception:
-        required_passcode = None
-    if not required_passcode:
-        return True
-    if st.session_state.get("run_controls_unlocked"):
-        return True
-    entered = st.text_input("passcode to unlock run controls", type="password",
-                            key="run_passcode_input")
-    if entered:
-        if entered == required_passcode:
-            st.session_state["run_controls_unlocked"] = True
-            st.rerun()
-        else:
-            st.error("wrong passcode")
-    return False
-
-
-def launch_run(iterations: int, budget_usd: float) -> dict:
-    """Start the research loop as a detached background process; log to a file."""
-    RUN_LOGS_DIR.mkdir(parents=True, exist_ok=True)
-    started_at = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    log_path = RUN_LOGS_DIR / f"run_{started_at}.log"
-    with log_path.open("w") as log_file:
-        process = subprocess.Popen(
-            [sys.executable, "run_phase_c_loop.py",
-             "--iterations", str(iterations), "--budget-usd", str(budget_usd)],
-            cwd=PROJECT_ROOT, stdout=log_file, stderr=subprocess.STDOUT,
-            start_new_session=True,  # survives the dashboard restarting
-        )
-    state = {"pid": process.pid, "started_at": started_at, "iterations": iterations,
-             "budget_usd": budget_usd, "log_path": str(log_path.relative_to(PROJECT_ROOT))}
-    RUN_STATE_PATH.write_text(json.dumps(state))
-    return state
-
-
-def tail_of_log(state: dict, lines: int = 25) -> str:
-    log_file = PROJECT_ROOT / state["log_path"]
-    if not log_file.exists():
-        return "(no log yet)"
-    content = [line for line in log_file.read_text().splitlines()
-               if "FutureWarning" not in line and "pct_change" not in line]
-    return "\n".join(content[-lines:]) or "(log is empty so far)"
-
-
 # ------------------------------------------------------------------ header
 st.title("Self-Improving Market Research Agent")
 st.markdown(
@@ -351,7 +274,7 @@ st.markdown(
 
 experiments = load_experiments()
 if experiments.empty:
-    st.info("The journal is empty — run an iteration first (Run tab, or `python3 run_phase_c_loop.py`)")
+    st.info("The journal is empty — run an iteration first (`python3 run_phase_c_loop.py`)")
 
 tested = experiments[experiments["status"] == "tested"] if not experiments.empty else pd.DataFrame()
 total_cost = experiments["cost_usd"].dropna().sum() if not experiments.empty else 0.0
@@ -359,8 +282,6 @@ monetary_summary = load_monetary_summary(tested) if not tested.empty else pd.Dat
 best_money_row = (monetary_summary.loc[monetary_summary["dollar_edge"].idxmax()]
                   if not monetary_summary.empty else None)
 holdout_verdicts = load_holdout_verdicts()
-run_state = load_run_state()
-run_alive = run_is_alive(run_state)
 
 # Hero (dark) card = the headline number; the rest stay light. Only the
 # external ($) metric appears here — internal research metrics live behind
@@ -373,8 +294,7 @@ if best_money_row is not None:
 else:
     overview[0].markdown(card("Best signal", "—", "no tested signals yet", dark=True),
                          unsafe_allow_html=True)
-overview[1].markdown(card("Experiments", str(len(experiments)),
-                          ("running now" if run_alive else f"{len(tested)} tested")),
+overview[1].markdown(card("Experiments", str(len(experiments)), f"{len(tested)} tested"),
                      unsafe_allow_html=True)
 overview[2].markdown(card("Research spend", f"${total_cost:.2f}", ""), unsafe_allow_html=True)
 if holdout_verdicts.empty:
@@ -392,9 +312,9 @@ st.markdown(f'<p style="color:{ZINC["500"]}; font-size:.78rem; margin-top:.5rem;
 st.markdown("<div style='height:.75rem'></div>", unsafe_allow_html=True)
 
 # ------------------------------------------------------------------- tabs
-signals_tab, candidates_tab, detail_tab, agents_tab, holdout_tab, metrics_tab, run_tab = st.tabs(
+signals_tab, candidates_tab, detail_tab, agents_tab, holdout_tab, metrics_tab = st.tabs(
     ["Signals", "Stock predictions", "Experiment detail", "Agent team",
-     "Holdout verdicts", "Metrics", "▶ Run the researcher"]
+     "Holdout verdicts", "Metrics"]
 )
 
 with signals_tab:
@@ -784,55 +704,3 @@ here.
 | **point-in-time** | The golden rule of honest backtesting: a feature on date X may only use information that was *public* on date X (e.g. financials count from their SEC filing date, not the quarter they describe). |
 | **researcher / judge / journal** | The three parts of the loop: Claude Opus proposes signals and writes feature code (researcher); a fixed statistical pipeline scores them out-of-sample (judge — the LLM can't influence it); every hypothesis, verdict, and reflection is stored (journal) and fed back to the researcher next iteration. |
 """)
-
-with run_tab:
-    st.markdown('<div class="sc-label">Send the researcher on a run</div>', unsafe_allow_html=True)
-    st.markdown(f'<p style="color:{ZINC["500"]}; font-size:.85rem;">Proposes a signal, tests it, '
-                "and records the result. Updates automatically while running.</p>", unsafe_allow_html=True)
-
-    if not run_controls_unlocked():
-        st.info("This deployment requires a passcode to launch runs or open the holdout "
-                 "— read-only for everyone else. Enter it above to unlock.")
-    else:
-        control_columns = st.columns([1, 1, 2])
-        run_iterations = control_columns[0].number_input("iterations", min_value=1, max_value=30,
-                                                         value=1, disabled=run_alive)
-        run_budget = control_columns[1].number_input("budget per iteration (USD)", min_value=0.5, max_value=10.0,
-                                                     value=5.0, step=0.5, disabled=run_alive)
-        estimated = run_iterations * 0.65
-        control_columns[2].markdown(card("estimated cost", f"~${estimated:.2f}",
-                                         f"hard cap ${run_iterations * run_budget:.0f} "
-                                         f"(observed ≈ $0.55–0.65/iteration)"), unsafe_allow_html=True)
-
-        if run_alive:
-            st.markdown(badge("RESEARCHER RUNNING", "solid") + " " +
-                        badge(f"pid {run_state['pid']} · started {run_state['started_at']}", "muted"),
-                        unsafe_allow_html=True)
-            st.code(tail_of_log(run_state), language=None)
-            if st.button("Refresh status"):
-                st.rerun()
-        else:
-            if st.button("▶ Send the researcher on a run", type="primary"):
-                state = launch_run(int(run_iterations), float(run_budget))
-                st.success(f"Run launched (pid {state['pid']}) — {run_iterations} iteration(s), "
-                           f"&#36;{run_budget}/iteration cap. Watch progress here or in the Signals tab.")
-                st.rerun()
-            if run_state:  # a previous run exists but is finished
-                with st.expander(f"last run's log ({run_state['started_at']})"):
-                    st.code(tail_of_log(run_state, lines=60), language=None)
-
-        st.markdown('<div class="sc-label" style="margin-top:1.2rem">Final verdict</div>',
-                    unsafe_allow_html=True)
-        st.markdown(f'<p style="color:{ZINC["500"]}; font-size:.85rem;">Opens the sealed holdout '
-                    "once, for the best signal. Manual and permanent — not part of a normal run.</p>",
-                    unsafe_allow_html=True)
-        acknowledge = st.checkbox("I understand the holdout opens once, at the true end of a run")
-        if st.button("Open the holdout (Gate 1 verdict)", disabled=not acknowledge or run_alive):
-            with st.spinner("Opening the holdout ..."):
-                result = subprocess.run(
-                    [sys.executable, "run_phase_c_loop.py", "--final-verdict"],
-                    cwd=PROJECT_ROOT, capture_output=True, text=True, timeout=600,
-                )
-            verdict_lines = [line for line in result.stdout.splitlines() if "VERDICT" in line or "holdout" in line]
-            (st.success if result.returncode == 0 else st.error)("\n".join(verdict_lines) or result.stderr[-500:])
-            load_holdout_verdicts.clear()
