@@ -245,31 +245,15 @@ YOUR JOURNAL SO FAR:
 """
 
 
-def _transcript_lines(message) -> list[str]:
-    """Render one SDK assistant message as readable transcript lines."""
-    from claude_agent_sdk import AssistantMessage, TextBlock, ThinkingBlock, ToolUseBlock
-
-    lines = []
-    if isinstance(message, AssistantMessage):
-        for block in message.content:
-            if isinstance(block, TextBlock):
-                lines.append(f"**researcher:** {block.text}\n")
-            elif isinstance(block, ToolUseBlock):
-                compact_input = json.dumps(block.input)[:400]
-                lines.append(f"- tool `{block.name}`: {compact_input}\n")
-            elif isinstance(block, ThinkingBlock):
-                lines.append(f"<details><summary>thinking</summary>\n\n{block.thinking}\n</details>\n")
-    return lines
-
-
 async def run_researcher_session(iteration: int, budget_usd: float,
-                                 transcript_path: pathlib.Path,
                                  team_brief: str = "") -> tuple[str | None, float | None]:
     """One researcher session via the Claude Agent SDK (the only SDK-aware function).
 
-    Writes the full session transcript (visible reasoning + tool calls) to
-    `transcript_path` and returns (session_id, cost_usd) so the verdict can be
-    fed back into the same session for a reflection note.
+    Returns (session_id, cost_usd) so the verdict can be fed back into the
+    same session for a reflection note. The session's reasoning/tool-call
+    trace is not persisted: the journal already keeps the parts that matter
+    (feature.py, hypothesis, reflection, score), and the raw transcript had
+    no other reader — nothing in the pipeline consumed it.
     """
     from claude_agent_sdk import ClaudeAgentOptions, ResultMessage, query
 
@@ -286,23 +270,19 @@ async def run_researcher_session(iteration: int, budget_usd: float,
     )
 
     session_id, cost = None, None
-    with transcript_path.open("w") as transcript_file:
-        transcript_file.write(f"# Researcher session — iteration {iteration}\n\n")
-        async for message in query(
-                prompt=researcher_prompt(iteration, journal.journal_markdown(), team_brief),
-                options=options):
-            for line in _transcript_lines(message):
-                transcript_file.write(line + "\n")
-            if isinstance(message, ResultMessage):
-                session_id, cost = message.session_id, message.total_cost_usd
-                print(f"  researcher session done: subtype={message.subtype}"
-                      + (f", cost=${cost:.2f}" if cost else ""))
-                if message.is_error:
-                    status = getattr(message, "api_error_status", None)
-                    raise UsageLimitError(
-                        f"researcher session failed (is_error, "
-                        f"api_error_status={status}, subtype={message.subtype})"
-                    )
+    async for message in query(
+            prompt=researcher_prompt(iteration, journal.journal_markdown(), team_brief),
+            options=options):
+        if isinstance(message, ResultMessage):
+            session_id, cost = message.session_id, message.total_cost_usd
+            print(f"  researcher session done: subtype={message.subtype}"
+                  + (f", cost=${cost:.2f}" if cost else ""))
+            if message.is_error:
+                status = getattr(message, "api_error_status", None)
+                raise UsageLimitError(
+                    f"researcher session failed (is_error, "
+                    f"api_error_status={status}, subtype={message.subtype})"
+                )
     return session_id, cost
 
 
@@ -581,8 +561,6 @@ def main() -> None:
 def run_one_iteration(panel, iteration: int, proposal_dir: pathlib.Path, arguments) -> None:
     """One full research iteration: team -> researcher -> judge -> reflection."""
 
-    transcript_path = proposal_dir / "session_transcript.md"
-
     # Multi-agent phase (optional): the research team decides WHAT to build,
     # then the researcher session below implements it. Splitting the budget
     # keeps --budget-usd a true per-iteration cap across both phases.
@@ -630,7 +608,7 @@ def run_one_iteration(panel, iteration: int, proposal_dir: pathlib.Path, argumen
 
     session_id, cost = asyncio.run(
         run_researcher_session(iteration, arguments.budget_usd - team_cost,
-                               transcript_path, team_brief=team_brief)
+                               team_brief=team_brief)
     )
     cost = (cost or 0.0) + team_cost
 
@@ -639,10 +617,7 @@ def run_one_iteration(panel, iteration: int, proposal_dir: pathlib.Path, argumen
         print("  researcher did not produce feature.py — skipping evaluation")
         return
     experiment_id, metrics = evaluate_proposal(panel, feature_code_path, iteration)
-    journal.record_session_artifacts(
-        experiment_id, transcript_path=str(transcript_path.relative_to(PROJECT_ROOT)),
-        cost_usd=cost,
-    )
+    journal.record_session_artifacts(experiment_id, cost_usd=cost)
 
     # Feed the verdict back to the same session for a short journal reflection.
     if metrics is not None and session_id is not None:

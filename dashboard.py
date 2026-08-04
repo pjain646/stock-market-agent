@@ -654,11 +654,6 @@ with detail_tab:
         else:
             st.warning(f"feature code not found at {experiment['feature_code_path']}")
 
-        transcript_path = experiment.get("transcript_path")
-        if transcript_path and (PROJECT_ROOT / transcript_path).exists():
-            with st.expander("Full reasoning transcript"):
-                st.markdown((PROJECT_ROOT / transcript_path).read_text())
-
         st.markdown('<div class="sc-label" style="margin-top:.9rem">The test data</div>',
                     unsafe_allow_html=True)
         oos_csv_path = experiment.get("oos_csv_path")
