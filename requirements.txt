@@ -1,12 +1,8 @@
 # Core research pipeline
 pandas==2.3.0
-# numpy/scipy/scikit-learn: floor, not exact pins. An exact pin can force a
-# from-source build (20-40+ min, looks identical to a hung build) on a Python
-# version newer than that pin has a prebuilt wheel for - let the resolver
-# pick whatever current release actually has a wheel for the target Python.
-numpy>=2.3.1
-scipy>=1.18.0
-scikit-learn>=1.9.0
+numpy==2.3.1
+scipy==1.18.0
+scikit-learn==1.9.0
 yfinance==1.4.1
 requests==2.32.4
 
