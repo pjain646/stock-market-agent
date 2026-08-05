@@ -1,10 +1,10 @@
-# shadcn-style theme: zinc palette, white surface, near-black text.
+# modern dark theme: near-black surface, single emerald accent.
 [theme]
-base = "light"
-primaryColor = "#18181b"          # zinc-900 (buttons, focus, accents)
-backgroundColor = "#ffffff"
-secondaryBackgroundColor = "#fafafa"  # zinc-50 (sidebar, inputs)
-textColor = "#09090b"             # zinc-950
+base = "dark"
+primaryColor = "#3ecf8e"          # emerald accent (buttons, focus, links)
+backgroundColor = "#0a0a0b"
+secondaryBackgroundColor = "#151517"  # widget chrome (selects, code, sidebar)
+textColor = "#f2f2f3"
 
 [server]
 headless = true
