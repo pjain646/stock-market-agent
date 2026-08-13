@@ -1,0 +1,53 @@
+# Daily stock-pick refresh — no LLM involved. `--rank-candidates` just
+# re-fetches today's prices and re-scores the already-proven signals through
+# their fixed, already-fitted model, so this is deterministic and needs no
+# ANTHROPIC_API_KEY (unlike research-run.yml, which drives the researcher).
+#
+# Runs on every US trading day. Cron is UTC; 12:30 UTC is ~07:30 ET, safely
+# after the prior session's data has settled and before market open, so
+# "today's picks" reflects the latest full trading day. GitHub may delay a
+# scheduled run by several minutes under load — that's fine here, nothing
+# time-critical happens right at market open.
+
+name: daily candidate refresh
+
+on:
+  schedule:
+    - cron: "30 12 * * 1-5"
+  workflow_dispatch: {}
+
+# Don't race a manual research run's own --push (both write to the repo).
+concurrency:
+  group: research-run
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  refresh-candidates:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Configure git for automated commits
+        run: |
+          git config user.name "research-bot"
+          git config user.email "actions@github.com"
+
+      - name: Re-rank today's stock candidates
+        env:
+          FMP_API_KEY: ${{ secrets.FMP_API_KEY }}
+          FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
+          ALPHA_VANTAGE_API_KEY: ${{ secrets.ALPHA_VANTAGE_API_KEY }}
+          SEC_CONTACT_EMAIL: ${{ secrets.SEC_CONTACT_EMAIL }}
+        run: python run_phase_c_loop.py --rank-candidates --push

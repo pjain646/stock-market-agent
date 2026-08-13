@@ -515,6 +515,8 @@ def main() -> None:
 
     if arguments.rank_candidates:
         rank_stock_candidates(build_live_panel())
+        if arguments.push:
+            push_candidates_to_git()
         return
 
     panel = build_panel(refresh=arguments.refresh_data)
@@ -648,6 +650,31 @@ def run_one_iteration(panel, iteration: int, proposal_dir: pathlib.Path, argumen
     # full paid research sessions).
     if arguments.push:
         push_results_to_git(iteration)
+
+
+def push_candidates_to_git() -> None:
+    """Commit ONLY candidates/ and push, so the deployed dashboard's "Stock
+    predictions" tab shows today's picks.
+
+    Separate from `push_results_to_git`: a candidate refresh touches none of
+    the research journal, so it should never pick up an in-progress research
+    run's uncommitted `journal.db`/`proposals` changes (same scoped-pathspec
+    reasoning as the research push, applied to the other data path).
+    """
+    import subprocess
+
+    def git(*args):
+        return subprocess.run(["git", *args], cwd=PROJECT_ROOT,
+                              capture_output=True, text=True)
+
+    git("add", "--", "candidates")
+    commit = git("commit", "-m", "daily candidate refresh", "--", "candidates")
+    if commit.returncode != 0:
+        print(f"  nothing to push ({commit.stdout.strip() or commit.stderr.strip()})")
+        return
+    push = git("push")
+    print("  pushed — deployed dashboard will refresh" if push.returncode == 0
+          else f"  push failed: {push.stderr.strip()}")
 
 
 def push_results_to_git(iteration: int | None = None) -> None:
