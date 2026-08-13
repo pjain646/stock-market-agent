@@ -17,12 +17,14 @@ Run:  streamlit run dashboard.py
 """
 from __future__ import annotations
 
+import datetime
 import json
 import pathlib
 import re
 import sqlite3
 
 import altair as alt
+import numpy as np
 import pandas as pd
 import streamlit as st
 
@@ -99,6 +101,7 @@ h2, h3 {{ font-weight: 600 !important; letter-spacing: -0.02em; }}
 .sc-badge-solid   {{ background: {ACCENT}; color: {ACCENT_TEXT}; border: 1px solid {ACCENT}; }}
 .sc-badge-outline {{ background: transparent; color: {ZINC["700"]}; border: 1px solid {ZINC["300"]}; }}
 .sc-badge-muted   {{ background: {ZINC["100"]}; color: {ZINC["700"]}; border: 1px solid {ZINC["200"]}; }}
+.sc-badge-warn    {{ background: rgba(245,158,11,.15); color: #f5a623; border: 1px solid rgba(245,158,11,.4); }}
 
 /* streamlit widget restyling */
 [data-testid="stMetric"], [data-testid="stExpander"] {{
@@ -621,9 +624,38 @@ if active_tab == "Stock predictions":
         st.markdown('<div class="sc-label">Today\'s stock picks</div>', unsafe_allow_html=True)
         signals_used = manifest.get("signals_used", [])
         signal_badges = " ".join(badge(display_name(s["signal_name"]), "muted") for s in signals_used)
-        st.markdown(f'<p style="color:{ZINC["500"]}; font-size:.85rem;">As of {as_of_date} · '
-                    f'based on {len(signals_used)} proven signal(s): {signal_badges}</p>',
-                    unsafe_allow_html=True)
+
+        # Freshness indicator — derived purely from the committed data's own
+        # date vs. today's date, not from any live signal about the GitHub
+        # Action. That's deliberate: this dashboard (Streamlit Community
+        # Cloud) sleeps when idle and only wakes on a visit, so anything
+        # relying on the app being awake DURING a refresh would miss it. A
+        # date comparison is correct the instant the app wakes up, however
+        # long it was asleep, with zero coordination needed.
+        try:
+            data_date = pd.to_datetime(as_of_date).date()
+            trading_days_stale = int(np.busday_count(data_date, datetime.date.today()))
+        except (ValueError, TypeError):
+            trading_days_stale = None
+
+        if trading_days_stale is None:
+            freshness_badge = badge("date unknown", "muted")
+        elif trading_days_stale <= 0:
+            freshness_badge = badge("Updated today", "solid")
+        elif trading_days_stale == 1:
+            freshness_badge = badge("Updated as of yesterday's close", "muted")
+        else:
+            # The daily workflow runs every weekday, so a >1-trading-day gap
+            # means at least one scheduled refresh didn't land (workflow
+            # failure, paused schedule, etc.), not just an off day.
+            freshness_badge = badge(
+                f"Stale — {trading_days_stale} trading days since last refresh", "warn",
+                title="The daily refresh workflow may have failed — check the "
+                      "\"daily candidate refresh\" runs in the GitHub Actions tab.")
+
+        st.markdown(f'<p style="color:{ZINC["500"]}; font-size:.85rem;">As of {as_of_date} '
+                    f'{freshness_badge} · based on {len(signals_used)} proven signal(s): '
+                    f'{signal_badges}</p>', unsafe_allow_html=True)
 
         if not candidate_rows.empty:
             top_pick = candidate_rows.iloc[0]
