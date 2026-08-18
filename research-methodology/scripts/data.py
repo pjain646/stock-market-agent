@@ -54,6 +54,15 @@ def fetch_prices(tickers, start_date, end_date) -> pd.DataFrame:
     if isinstance(adjusted_close_wide, pd.Series):
         adjusted_close_wide = adjusted_close_wide.to_frame(tickers[0])
 
+    # Every requested ticker failed (delisted/bad symbol/etc): yfinance hands
+    # back an empty frame with no real date index, so reset_index() below
+    # wouldn't produce a "Date" column and melt() would KeyError. Calling
+    # this with an all-failing ticker subset became possible once callers
+    # started fetching narrower ticker groups (e.g. just the tickers new to
+    # an incremental cache) instead of always the full universe at once.
+    if adjusted_close_wide.empty:
+        return pd.DataFrame(columns=["date", "ticker", "adj_close"])
+
     date_index_name = adjusted_close_wide.index.name or "Date"
     price_history_long = (
         adjusted_close_wide.reset_index()
@@ -105,8 +114,8 @@ def fetch_prices_incremental(tickers, start_date, end_date, cache_path: pathlib.
             since_last_cached = (cached["date"].max() - pd.Timedelta(days=1)).date().isoformat()
             fetched_frames.append(fetch_prices(known_tickers, since_last_cached, end_date))
 
-    if fetched_frames:
-        frames_to_combine = [cached] + fetched_frames if not cached.empty else fetched_frames
+    frames_to_combine = [frame for frame in [cached] + fetched_frames if not frame.empty]
+    if frames_to_combine:
         combined = pd.concat(frames_to_combine, ignore_index=True)
         combined = (combined.drop_duplicates(subset=["ticker", "date"], keep="last")
                             .sort_values(["ticker", "date"]).reset_index(drop=True))
