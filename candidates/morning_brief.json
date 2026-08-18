@@ -1,0 +1,187 @@
+{
+  "as_of": "2026-08-18",
+  "macro": "Risk-off tone dominates as Middle East tensions escalate: Iran says the Strait of Hormuz remains shut until the U.S. meets interim-deal conditions, the UAE reported two missiles launched from Iran, and a vessel was struck by an unknown projectile in the Strait, keeping oil bid. U.S. bond yields are surging \u2014 the 30-year hit its highest level since 2007 \u2014 pressuring equities, with a tech selloff pulling Wall Street to two-week lows. Trump said no talks with Iran are planned or scheduled, while the dollar stayed range-bound as markets price a dovish Fed response. July data showed the housing market still under pressure even as factory output rose.",
+  "internals_narrative": "Energy led sectors (+1.0%) with oil-levered names like DVN (+3.8%), PSX (+3.0%) and EOG (+2.5%) among top gainers, while Communication Services (-2.2%), Consumer Staples (-2.1%) and Technology (-1.7%) lagged; CHTR (-6.6%), STZ (-6.2%) and NOW (-5.1%) were the biggest decliners as rising yields hit rate-sensitive and growth names.",
+  "gainers": [
+    {
+      "ticker": "DVN",
+      "industry": "Energy",
+      "pct_change": 0.037513659279049705,
+      "as_of": "2026-08-17"
+    },
+    {
+      "ticker": "PSX",
+      "industry": "Energy",
+      "pct_change": 0.029707642751911845,
+      "as_of": "2026-08-17"
+    },
+    {
+      "ticker": "CAT",
+      "industry": "Industrials",
+      "pct_change": 0.02927958821274812,
+      "as_of": "2026-08-17"
+    },
+    {
+      "ticker": "FCX",
+      "industry": "Materials",
+      "pct_change": 0.028425318850525905,
+      "as_of": "2026-08-17"
+    },
+    {
+      "ticker": "EOG",
+      "industry": "Energy",
+      "pct_change": 0.024822896507833425,
+      "as_of": "2026-08-17"
+    },
+    {
+      "ticker": "NEM",
+      "industry": "Materials",
+      "pct_change": 0.021824045925637137,
+      "as_of": "2026-08-17"
+    },
+    {
+      "ticker": "UNP",
+      "industry": "Industrials",
+      "pct_change": 0.02117951980327759,
+      "as_of": "2026-08-17"
+    },
+    {
+      "ticker": "VLO",
+      "industry": "Energy",
+      "pct_change": 0.01615590715232429,
+      "as_of": "2026-08-17"
+    },
+    {
+      "ticker": "XOM",
+      "industry": "Energy",
+      "pct_change": 0.01502482730623833,
+      "as_of": "2026-08-17"
+    },
+    {
+      "ticker": "NUE",
+      "industry": "Materials",
+      "pct_change": 0.014019519401773373,
+      "as_of": "2026-08-17"
+    }
+  ],
+  "losers": [
+    {
+      "ticker": "CHTR",
+      "industry": "CommunicationServices",
+      "pct_change": -0.06592336739022686,
+      "as_of": "2026-08-17"
+    },
+    {
+      "ticker": "STZ",
+      "industry": "ConsumerStaples",
+      "pct_change": -0.06193415412276759,
+      "as_of": "2026-08-17"
+    },
+    {
+      "ticker": "NOW",
+      "industry": "Technology",
+      "pct_change": -0.05080647622385337,
+      "as_of": "2026-08-17"
+    },
+    {
+      "ticker": "ROST",
+      "industry": "ConsumerDiscretionary",
+      "pct_change": -0.041082498394114486,
+      "as_of": "2026-08-17"
+    },
+    {
+      "ticker": "NKE",
+      "industry": "ConsumerDiscretionary",
+      "pct_change": -0.040265146282356,
+      "as_of": "2026-08-17"
+    },
+    {
+      "ticker": "ACN",
+      "industry": "Technology",
+      "pct_change": -0.03906384581351152,
+      "as_of": "2026-08-17"
+    },
+    {
+      "ticker": "ADBE",
+      "industry": "Technology",
+      "pct_change": -0.03780015204463272,
+      "as_of": "2026-08-17"
+    },
+    {
+      "ticker": "META",
+      "industry": "Technology",
+      "pct_change": -0.035398839954296824,
+      "as_of": "2026-08-17"
+    },
+    {
+      "ticker": "BKNG",
+      "industry": "ConsumerDiscretionary",
+      "pct_change": -0.03442423434783248,
+      "as_of": "2026-08-17"
+    },
+    {
+      "ticker": "CVS",
+      "industry": "Pharma",
+      "pct_change": -0.03242076376235614,
+      "as_of": "2026-08-17"
+    }
+  ],
+  "industry_moves": [
+    {
+      "industry": "Energy",
+      "pct_change": 0.010194196008246201
+    },
+    {
+      "industry": "Utilities",
+      "pct_change": -0.0018171097543771663
+    },
+    {
+      "industry": "Materials",
+      "pct_change": -0.0024795411265773337
+    },
+    {
+      "industry": "RealEstate",
+      "pct_change": -0.005334369334970468
+    },
+    {
+      "industry": "Pharma",
+      "pct_change": -0.0063170885500767274
+    },
+    {
+      "industry": "Industrials",
+      "pct_change": -0.006899446228621635
+    },
+    {
+      "industry": "Financials",
+      "pct_change": -0.009665545225351077
+    },
+    {
+      "industry": "ConsumerDiscretionary",
+      "pct_change": -0.015818261419643435
+    },
+    {
+      "industry": "Technology",
+      "pct_change": -0.01714905859702276
+    },
+    {
+      "industry": "ConsumerStaples",
+      "pct_change": -0.02056389908080772
+    },
+    {
+      "industry": "CommunicationServices",
+      "pct_change": -0.022441066633405483
+    }
+  ],
+  "ticker_notes": {
+    "DVN": "Devon, Diamondback, Western Midstream and WhiteWater took a positive final investment decision on their Solitude Pipeline System JV to build two 48-inch natural gas pipelines.",
+    "EOG": "Barclays maintained Equal-Weight on EOG Resources and lowered its price target to $147.",
+    "NEM": "Gold miners are eyeing their best month since April 2020, with several names already up 30% in August.",
+    "ACN": "Accenture was downgraded on the view that its headcount math shows the AI-decoupling story isn't yet proven.",
+    "NOW": "An expert cautioned that Salesforce's and ServiceNow's business models are in danger from AI disruption.",
+    "NKE": "Nike stock, down nearly 80% from its 2021 peak, drew Wall Street warnings of a 'Stage 4' technical breakdown.",
+    "ADBE": "Adobe fell as chip stocks cratered and bond yields bit, amid commentary that the market may take years to reward its AI efforts.",
+    "AEP": "Carl Icahn trimmed his AEP stake and Truist lowered its price target to $139 while maintaining Buy.",
+    "ABBV": "Wells Fargo maintained Overweight on AbbVie and raised its price target to $300.",
+    "AIG": "Cantor Fitzgerald maintained Overweight on AIG while lowering its price target to $90."
+  }
+}
