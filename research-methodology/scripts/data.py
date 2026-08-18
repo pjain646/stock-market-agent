@@ -66,21 +66,23 @@ def fetch_prices(tickers, start_date, end_date) -> pd.DataFrame:
 
 
 def fetch_prices_incremental(tickers, start_date, end_date, cache_path: pathlib.Path,
-                             refresh_window_days: int = 45) -> pd.DataFrame:
-    """Like `fetch_prices`, but backed by a growing on-disk cache so a daily
-    caller only downloads a trailing window instead of re-fetching a decade
-    of history every time.
+                             full_refresh: bool = False) -> pd.DataFrame:
+    """Like `fetch_prices`, but backed by a growing on-disk cache: a normal
+    call only downloads whatever's NEW since the cache's last date, instead
+    of re-fetching a decade of history every time.
 
-    yfinance's auto_adjust=True retroactively revises EVERY historical
-    adjusted close whenever a ticker has a new split/dividend — a naive
-    append-only cache would silently drift stale as that happens. Mitigated
-    by always re-fetching the trailing `refresh_window_days` days (covers
-    the near-total majority of corporate actions) rather than trusting the
-    cache for recent history; only older, effectively-settled history is
-    read straight from disk.
+    Old cached prices can go stale: yfinance's auto_adjust=True retroactively
+    revises EVERY historical adjusted close whenever a ticker has a new
+    split/dividend, and a pure append-only cache never re-checks old rows to
+    catch that. We accept that staleness day to day (dividends aren't common
+    enough to matter at daily resolution) and instead rely on the CALLER
+    passing `full_refresh=True` on a periodic cadence (see `build_live_panel`)
+    to re-fetch every known ticker's full history and wipe out any drift
+    that's built up since the last full refresh.
 
-    A ticker not yet in the cache (new to the universe) gets its full
-    `start_date..end_date` history fetched once, same as `fetch_prices`.
+    A ticker not yet in the cache (new to the universe) always gets its
+    full `start_date..end_date` history fetched, same as `fetch_prices`,
+    regardless of `full_refresh`.
     """
     cached = pd.read_parquet(cache_path) if cache_path.exists() else pd.DataFrame(
         columns=["date", "ticker", "adj_close"])
@@ -91,13 +93,17 @@ def fetch_prices_incremental(tickers, start_date, end_date, cache_path: pathlib.
     new_tickers = [t for t in tickers if t not in cached_tickers]
     known_tickers = [t for t in tickers if t in cached_tickers]
 
-    refresh_start = (pd.Timestamp(end_date) - pd.Timedelta(days=refresh_window_days)).date().isoformat()
-
     fetched_frames = []
     if new_tickers:
         fetched_frames.append(fetch_prices(new_tickers, start_date, end_date))
     if known_tickers:
-        fetched_frames.append(fetch_prices(known_tickers, refresh_start, end_date))
+        if full_refresh:
+            fetched_frames.append(fetch_prices(known_tickers, start_date, end_date))
+        else:
+            # 1 day of overlap, not a from-scratch re-fetch: just pull
+            # whatever trading day(s) landed since the cache was last saved.
+            since_last_cached = (cached["date"].max() - pd.Timedelta(days=1)).date().isoformat()
+            fetched_frames.append(fetch_prices(known_tickers, since_last_cached, end_date))
 
     if fetched_frames:
         frames_to_combine = [cached] + fetched_frames if not cached.empty else fetched_frames

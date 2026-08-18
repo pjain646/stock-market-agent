@@ -132,10 +132,17 @@ def build_live_panel() -> pd.DataFrame:
     from data import fetch_prices_incremental
 
     tickers = config.all_tickers()
-    today = datetime.date.today().isoformat()
+    today_date = datetime.date.today()
+    today = today_date.isoformat()
+    # Monday: reabsorb any yfinance adjusted-close drift that's built up over
+    # the week (see fetch_prices_incremental's docstring) — cheap in a free,
+    # unlimited-quota API, just slower for that one day's run.
+    weekly_full_refresh = today_date.weekday() == 0
     print(f"fetching {len(tickers)} tickers {config.START}..{today} "
-          f"(incremental, cache: {PRICE_CACHE_PATH.relative_to(PROJECT_ROOT)}) ...")
-    panel = fetch_prices_incremental(tickers, config.START, today, PRICE_CACHE_PATH)
+          f"(incremental{', full weekly refresh' if weekly_full_refresh else ''}, "
+          f"cache: {PRICE_CACHE_PATH.relative_to(PROJECT_ROOT)}) ...")
+    panel = fetch_prices_incremental(tickers, config.START, today, PRICE_CACHE_PATH,
+                                     full_refresh=weekly_full_refresh)
     panel["industry"] = panel["ticker"].map(config.industry_map())
     panel = add_forward_direction_label(panel, forward_horizon_days=config.LABEL_HORIZON)
     panel["split"] = "live"
