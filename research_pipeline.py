@@ -47,6 +47,10 @@ CANDIDATES_PATH = PROJECT_ROOT / "candidates" / "candidates.csv"
 # Colocated with CANDIDATES_PATH deliberately: push_candidates_to_git() commits
 # the whole `candidates/` path, so the brief rides along for free.
 MORNING_BRIEF_PATH = PROJECT_ROOT / "candidates" / "morning_brief.json"
+# Same free ride, same reason: build_live_panel() needs this to SURVIVE across
+# runs (each CI run is a fresh checkout with no local disk to persist to), so
+# it has to be committed like everything else in candidates/, not data_cache/.
+PRICE_CACHE_PATH = PROJECT_ROOT / "candidates" / "price_cache.parquet"
 
 # The contract every proposed feature module must satisfy. This text is shown
 # to the researcher verbatim, and enforced when the module is loaded.
@@ -125,12 +129,13 @@ def build_live_panel() -> pd.DataFrame:
     """
     import datetime
 
-    from data import fetch_prices
+    from data import fetch_prices_incremental
 
     tickers = config.all_tickers()
     today = datetime.date.today().isoformat()
-    print(f"fetching {len(tickers)} tickers {config.START}..{today} (live, uncached) ...")
-    panel = fetch_prices(tickers, config.START, today)
+    print(f"fetching {len(tickers)} tickers {config.START}..{today} "
+          f"(incremental, cache: {PRICE_CACHE_PATH.relative_to(PROJECT_ROOT)}) ...")
+    panel = fetch_prices_incremental(tickers, config.START, today, PRICE_CACHE_PATH)
     panel["industry"] = panel["ticker"].map(config.industry_map())
     panel = add_forward_direction_label(panel, forward_horizon_days=config.LABEL_HORIZON)
     panel["split"] = "live"

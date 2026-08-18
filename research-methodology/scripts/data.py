@@ -13,8 +13,9 @@ Honesty rules are enforced here in code, not left to the caller to remember:
     yet known — the point-in-time rule, in code.
 
 Functions:
-  fetch_prices         -- adjusted daily closes (yfinance)
-  fetch_fundamentals   -- point-in-time financial-statement line items (SEC EDGAR)
+  fetch_prices             -- adjusted daily closes (yfinance)
+  fetch_prices_incremental -- fetch_prices, backed by a growing on-disk cache
+  fetch_fundamentals       -- point-in-time financial-statement line items (SEC EDGAR)
 """
 from __future__ import annotations
 
@@ -62,6 +63,55 @@ def fetch_prices(tickers, start_date, end_date) -> pd.DataFrame:
     )
     price_history_long["date"] = pd.to_datetime(price_history_long["date"])
     return price_history_long.sort_values(["ticker", "date"]).reset_index(drop=True)
+
+
+def fetch_prices_incremental(tickers, start_date, end_date, cache_path: pathlib.Path,
+                             refresh_window_days: int = 45) -> pd.DataFrame:
+    """Like `fetch_prices`, but backed by a growing on-disk cache so a daily
+    caller only downloads a trailing window instead of re-fetching a decade
+    of history every time.
+
+    yfinance's auto_adjust=True retroactively revises EVERY historical
+    adjusted close whenever a ticker has a new split/dividend — a naive
+    append-only cache would silently drift stale as that happens. Mitigated
+    by always re-fetching the trailing `refresh_window_days` days (covers
+    the near-total majority of corporate actions) rather than trusting the
+    cache for recent history; only older, effectively-settled history is
+    read straight from disk.
+
+    A ticker not yet in the cache (new to the universe) gets its full
+    `start_date..end_date` history fetched once, same as `fetch_prices`.
+    """
+    cached = pd.read_parquet(cache_path) if cache_path.exists() else pd.DataFrame(
+        columns=["date", "ticker", "adj_close"])
+    if not cached.empty:
+        cached["date"] = pd.to_datetime(cached["date"])
+
+    cached_tickers = set(cached["ticker"].unique()) if not cached.empty else set()
+    new_tickers = [t for t in tickers if t not in cached_tickers]
+    known_tickers = [t for t in tickers if t in cached_tickers]
+
+    refresh_start = (pd.Timestamp(end_date) - pd.Timedelta(days=refresh_window_days)).date().isoformat()
+
+    fetched_frames = []
+    if new_tickers:
+        fetched_frames.append(fetch_prices(new_tickers, start_date, end_date))
+    if known_tickers:
+        fetched_frames.append(fetch_prices(known_tickers, refresh_start, end_date))
+
+    if fetched_frames:
+        frames_to_combine = [cached] + fetched_frames if not cached.empty else fetched_frames
+        combined = pd.concat(frames_to_combine, ignore_index=True)
+        combined = (combined.drop_duplicates(subset=["ticker", "date"], keep="last")
+                            .sort_values(["ticker", "date"]).reset_index(drop=True))
+        cache_path.parent.mkdir(parents=True, exist_ok=True)
+        combined.to_parquet(cache_path, index=False)
+    else:
+        combined = cached
+
+    in_range = combined[(combined["date"] >= pd.Timestamp(start_date)) &
+                        (combined["date"] <= pd.Timestamp(end_date))]
+    return in_range.sort_values(["ticker", "date"]).reset_index(drop=True)
 
 
 # --------------------------------------------------------------------------- #
