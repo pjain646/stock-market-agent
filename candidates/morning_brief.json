@@ -1,7 +1,7 @@
 {
   "as_of": "2026-08-18",
-  "macro": "Middle East tensions dominate overnight, with the UAE reporting two missiles launched from Iran, a vessel struck by a projectile in the Strait of Hormuz, and Tehran saying the Strait will stay shut until the U.S. meets interim-deal conditions while Trump says no talks with Iran are planned. The conflict is stoking oil worries and driving a broad selloff, with U.S. 30-year yields hitting their highest level since 2007 and a tech-led decline pulling Wall Street to two-week lows. The dollar is range-bound as markets price a potentially dovish Fed response, while July data showed a still-pressured housing market alongside rising factory output.",
-  "internals_narrative": "Energy was the only clearly positive group (+1.0%) as DVN (+3.8%), PSX (+3.0%), CAT (+2.9%) and other energy/materials names led gainers, while Communication Services (-2.2%), Consumer Staples (-2.1%) and Technology (-1.7%) lagged and CHTR (-6.6%), STZ (-6.2%) and NOW (-5.1%) topped the losers. The rotation favored energy and materials over tech, staples and communication services.",
+  "macro": "",
+  "internals_narrative": "",
   "gainers": [
     {
       "ticker": "DVN",
@@ -172,15 +172,5 @@
       "pct_change": -0.022441066633405483
     }
   ],
-  "ticker_notes": {
-    "DVN": "Devon, with Diamondback, WhiteWater and Western Midstream, took a positive final investment decision to build two 48-inch natural gas pipelines via their Solitude JV.",
-    "NEM": "Gold miners are eyeing their best month since April 2020, with several names up 30% in August.",
-    "NOW": "An expert cautioned that ServiceNow's and Salesforce's business models are 'in danger,' raising questions for NOW.",
-    "ROST": "Evercore ISI maintained Outperform on Ross Stores and raised its price target to $276.",
-    "NKE": "Nike stock, down nearly 80% from its 2021 peak, drew a Wall Street warning of a 'Stage 4' technical breakdown.",
-    "ACN": "Accenture was downgraded on concerns its headcount math shows the AI decoupling story isn't proven yet.",
-    "ABBV": "Wells Fargo maintained Overweight on AbbVie and raised its price target to $300.",
-    "AMT": "American Tower was flagged among the losers of REIT earnings season.",
-    "AEP": "Carl Icahn trimmed his AEP stake while sitting out new stock bets."
-  }
+  "ticker_notes": {}
 }
