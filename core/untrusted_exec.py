@@ -5,6 +5,15 @@ Vantage responses) the model reads while researching — so it's untrusted by
 construction. `secrets_hidden()` hides live API credentials from os.environ
 for the duration of any call into that code (module import and add_feature()
 itself), so it can't read and exfiltrate them even if it tried.
+
+Scoped to ANTHROPIC_API_KEY only. The data-source keys (FMP/FRED/Alpha
+Vantage/Finnhub) authenticate the exact free-tier data access spec §6
+explicitly grants feature code — stripping them didn't add real protection
+(they're low-value, low-limit credentials) and it broke legitimate live
+re-fetches a proven signal's feature code needs at candidate-ranking time
+(e.g. proposals/iteration_37/feature.py calling fetch_macro_series). What
+actually matters to keep out of reach is ANTHROPIC_API_KEY — misuse of that
+one has real billing consequences.
 """
 from __future__ import annotations
 
@@ -12,8 +21,7 @@ import contextlib
 import os
 
 SECRET_ENV_VARS = (
-    "ANTHROPIC_API_KEY", "FMP_API_KEY", "FRED_API_KEY",
-    "ALPHA_VANTAGE_API_KEY",
+    "ANTHROPIC_API_KEY",
 )
 
 
