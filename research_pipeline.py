@@ -12,7 +12,7 @@ Orchestration-seam note (spec §6): everything imported from core/ and the
 skill's scripts/ is harness-independent. ONLY this file knows about the
 Claude Agent SDK, so the SDK can later be swapped for our own loop.
 
-Run:  python run_phase_c_loop.py [--iterations N] [--budget-usd X] [--refresh-data]
+Run:  python research_pipeline.py [--iterations N] [--budget-usd X] [--refresh-data]
 """
 from __future__ import annotations
 
@@ -44,6 +44,9 @@ PROPOSALS_DIR = PROJECT_ROOT / "proposals"
 # deployed dashboard needs this file to show real output, so it's tracked,
 # same principle as journal.db and proposals/.
 CANDIDATES_PATH = PROJECT_ROOT / "candidates" / "candidates.csv"
+# Colocated with CANDIDATES_PATH deliberately: push_candidates_to_git() commits
+# the whole `candidates/` path, so the brief rides along for free.
+MORNING_BRIEF_PATH = PROJECT_ROOT / "candidates" / "morning_brief.json"
 
 # The contract every proposed feature module must satisfy. This text is shown
 # to the researcher verbatim, and enforced when the module is loaded.
@@ -490,6 +493,27 @@ def rank_stock_candidates(panel: pd.DataFrame) -> None:
           .to_string(index=False))
 
 
+def generate_morning_brief(panel: pd.DataFrame) -> None:
+    """"Lay of the land" 30 minutes before open: macro/world news, market
+    internals, and ticker-level news — never the model's own picks (see
+    core/morning_brief.py). Deliberately separate from `rank_stock_candidates`
+    and never allowed to fail the whole refresh: a broken brief is a missed
+    nice-to-have, not a reason to also lose today's candidate ranking — the
+    same lesson the FRED_API_KEY outage just taught about this cron job.
+    """
+    from core import morning_brief
+
+    try:
+        brief, cost = morning_brief.build_morning_brief(panel)
+    except Exception as brief_error:
+        print(f"morning brief generation failed (non-fatal): {brief_error}")
+        return
+
+    morning_brief.save_brief(brief, MORNING_BRIEF_PATH)
+    print(f"morning brief saved to {MORNING_BRIEF_PATH.relative_to(PROJECT_ROOT)} "
+          f"(cost ${cost:.4f})")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--iterations", type=int, default=2,
@@ -514,7 +538,9 @@ def main() -> None:
     journal.init_journal()
 
     if arguments.rank_candidates:
-        rank_stock_candidates(build_live_panel())
+        live_panel = build_live_panel()
+        rank_stock_candidates(live_panel)
+        generate_morning_brief(live_panel)
         if arguments.push:
             push_candidates_to_git()
         return

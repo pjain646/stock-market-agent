@@ -68,7 +68,7 @@ jobs:
           ALPHA_VANTAGE_API_KEY: ${{ secrets.ALPHA_VANTAGE_API_KEY }}
           SEC_CONTACT_EMAIL: ${{ secrets.SEC_CONTACT_EMAIL }}
         run: |
-          python run_phase_c_loop.py \
+          python research_pipeline.py \
             --iterations "${{ inputs.iterations }}" \
             --budget-usd "${{ inputs.budget_usd }}" \
             --push

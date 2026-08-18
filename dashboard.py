@@ -5,7 +5,7 @@ Per experiment it shows the three things Preyansh asked for:
   1. the exact feature tested (the real code),
   2. why it was chosen (the researcher's hypothesis + post-verdict reflection),
   3. the exact out-of-sample rows behind the score, previewable and downloadable.
-Read-only: the research loop runs from the CLI (`python3 run_phase_c_loop.py`),
+Read-only: the research loop runs from the CLI (`python3 research_pipeline.py`),
 not from this dashboard.
 
 Look & feel: black-and-white shadcn aesthetic (per Preyansh's reference UIs):
@@ -415,6 +415,37 @@ def badge(text: str, tone: str = "muted", title: str = "") -> str:
     return f'<span class="sc-badge sc-badge-{tone}"{title_attr}>{_escape_dollar(text)}</span>'
 
 
+def freshness_indicator(as_of_date) -> str:
+    """Badge HTML for how stale a piece of daily-refreshed data is, derived
+    purely from the data's own date vs. today's date — not from any live
+    signal about the GitHub Action. That's deliberate: this dashboard
+    (Streamlit Community Cloud) sleeps when idle and only wakes on a visit,
+    so anything relying on the app being awake DURING a refresh would miss
+    it. A date comparison is correct the instant the app wakes up, however
+    long it was asleep, with zero coordination needed.
+
+    Shared by the Stock predictions and Morning brief tabs — both read a
+    daily-refreshed file and both want the same staleness read.
+    """
+    try:
+        data_date = pd.to_datetime(as_of_date).date()
+        trading_days_stale = int(np.busday_count(data_date, datetime.date.today()))
+    except (ValueError, TypeError):
+        return badge("date unknown", "muted")
+
+    if trading_days_stale <= 0:
+        return badge("Updated today", "solid")
+    if trading_days_stale == 1:
+        return badge("Updated as of yesterday's close", "muted")
+    # The daily workflow runs every weekday, so a >1-trading-day gap means at
+    # least one scheduled refresh didn't land (workflow failure, paused
+    # schedule, etc.), not just an off day.
+    return badge(
+        f"Stale — {trading_days_stale} trading days since last refresh", "warn",
+        title="The daily refresh workflow may have failed — check the "
+              "\"daily candidate refresh\" runs in the GitHub Actions tab.")
+
+
 # ------------------------------------------------------------------ header
 header_left, header_right = st.columns([3, 1])
 with header_left:
@@ -441,7 +472,7 @@ with header_right:
 
 experiments = load_experiments()
 if experiments.empty:
-    st.info("The journal is empty — run an iteration first (`python3 run_phase_c_loop.py`)")
+    st.info("The journal is empty — run an iteration first (`python3 research_pipeline.py`)")
 
 tested = experiments[experiments["status"] == "tested"] if not experiments.empty else pd.DataFrame()
 total_cost = experiments["cost_usd"].dropna().sum() if not experiments.empty else 0.0
@@ -528,8 +559,8 @@ st.markdown("<div style='height:.75rem'></div>", unsafe_allow_html=True)
 # widget elsewhere on the page (e.g. the iteration selectors below) — any
 # interaction resets it to tab 0. st.pills backed by session_state does
 # persist, so it's used here as tab-like nav instead.
-TAB_NAMES = ["Signals", "Signal library", "Stock predictions", "Experiment detail",
-             "Research debate", "Holdout verdicts", "Metrics"]
+TAB_NAMES = ["Signals", "Signal library", "Stock predictions", "Morning brief",
+             "Experiment detail", "Research debate", "Holdout verdicts", "Metrics"]
 active_tab = st.pills("Navigation", TAB_NAMES, default=TAB_NAMES[0],
                       key="active_tab", label_visibility="collapsed")
 
@@ -610,7 +641,7 @@ if active_tab == "Signal library":
 if active_tab == "Stock predictions":
     # The product's actual output: per-stock predictions from COMBINED proven
     # signals (core/candidates.py, task #10). Reads whatever
-    # `python3 run_phase_c_loop.py --rank-candidates` last produced.
+    # `python3 research_pipeline.py --rank-candidates` last produced.
     positive_signals = tested[tested["tested_score"] > 0] if not tested.empty else pd.DataFrame()
     candidates_csv_path = PROJECT_ROOT / "candidates" / "candidates.csv"
     candidates_manifest_path = PROJECT_ROOT / "candidates" / "candidates.manifest.json"
@@ -625,36 +656,8 @@ if active_tab == "Stock predictions":
         signals_used = manifest.get("signals_used", [])
         signal_badges = " ".join(badge(display_name(s["signal_name"]), "muted") for s in signals_used)
 
-        # Freshness indicator — derived purely from the committed data's own
-        # date vs. today's date, not from any live signal about the GitHub
-        # Action. That's deliberate: this dashboard (Streamlit Community
-        # Cloud) sleeps when idle and only wakes on a visit, so anything
-        # relying on the app being awake DURING a refresh would miss it. A
-        # date comparison is correct the instant the app wakes up, however
-        # long it was asleep, with zero coordination needed.
-        try:
-            data_date = pd.to_datetime(as_of_date).date()
-            trading_days_stale = int(np.busday_count(data_date, datetime.date.today()))
-        except (ValueError, TypeError):
-            trading_days_stale = None
-
-        if trading_days_stale is None:
-            freshness_badge = badge("date unknown", "muted")
-        elif trading_days_stale <= 0:
-            freshness_badge = badge("Updated today", "solid")
-        elif trading_days_stale == 1:
-            freshness_badge = badge("Updated as of yesterday's close", "muted")
-        else:
-            # The daily workflow runs every weekday, so a >1-trading-day gap
-            # means at least one scheduled refresh didn't land (workflow
-            # failure, paused schedule, etc.), not just an off day.
-            freshness_badge = badge(
-                f"Stale — {trading_days_stale} trading days since last refresh", "warn",
-                title="The daily refresh workflow may have failed — check the "
-                      "\"daily candidate refresh\" runs in the GitHub Actions tab.")
-
         st.markdown(f'<p style="color:{ZINC["500"]}; font-size:.85rem;">As of {as_of_date} '
-                    f'{freshness_badge} · based on {len(signals_used)} proven signal(s): '
+                    f'{freshness_indicator(as_of_date)} · based on {len(signals_used)} proven signal(s): '
                     f'{signal_badges}</p>', unsafe_allow_html=True)
 
         if not candidate_rows.empty:
@@ -731,6 +734,87 @@ if active_tab == "Stock predictions":
             f'<div class="sc-sub" style="margin-top:.5rem; line-height:1.6">'
             f'Proven signals so far: {eligible} '
             f'({len(positive_signals)} of {len(tested)} tested).</div></div>',
+            unsafe_allow_html=True,
+        )
+
+if active_tab == "Morning brief":
+    # "30 minutes before open, give me the lay of the land" — macro/world
+    # news, market internals, and ticker-level news, generated once daily by
+    # core/morning_brief.py alongside the candidate refresh. Purely
+    # informational: never touches predicted_up_probability or the ranked
+    # candidate list (spec §9 / §6 — no agent scores or predicts here).
+    morning_brief_path = PROJECT_ROOT / "candidates" / "morning_brief.json"
+
+    if morning_brief_path.exists():
+        brief = json.loads(morning_brief_path.read_text())
+        as_of = brief.get("as_of", "unknown")
+
+        st.markdown('<div class="sc-label">This morning</div>', unsafe_allow_html=True)
+        st.markdown(f'<p style="color:{ZINC["500"]}; font-size:.85rem;">As of {as_of} '
+                    f'{freshness_indicator(as_of)}</p>', unsafe_allow_html=True)
+
+        macro_text = brief.get("macro", "").strip()
+        st.markdown(
+            card("Macro / world", macro_text or "No macro news synthesized for this run.",
+                wrap=True, icon="public"),
+            unsafe_allow_html=True)
+
+        internals_text = brief.get("internals_narrative", "").strip()
+        if internals_text:
+            st.markdown(
+                f'<p style="color:{ZINC["700"]}; font-size:.9rem; margin-top:1rem;">{internals_text}</p>',
+                unsafe_allow_html=True)
+
+        gainers, losers = brief.get("gainers", []), brief.get("losers", [])
+        if gainers or losers:
+            st.markdown('<div class="sc-label" style="margin-top:1.4rem">Market internals</div>',
+                        unsafe_allow_html=True)
+            movers_columns = st.columns(2)
+            if gainers:
+                gainers_table = pd.DataFrame(gainers)[["ticker", "industry", "pct_change"]]
+                gainers_table["pct_change"] = gainers_table["pct_change"].map("{:+.1%}".format)
+                movers_columns[0].markdown('<div class="sc-sub">Top gainers</div>', unsafe_allow_html=True)
+                movers_columns[0].dataframe(
+                    gainers_table.rename(columns={"ticker": "Ticker", "industry": "Industry",
+                                                   "pct_change": "Change"}),
+                    use_container_width=True, hide_index=True)
+            if losers:
+                losers_table = pd.DataFrame(losers)[["ticker", "industry", "pct_change"]]
+                losers_table["pct_change"] = losers_table["pct_change"].map("{:+.1%}".format)
+                movers_columns[1].markdown('<div class="sc-sub">Top losers</div>', unsafe_allow_html=True)
+                movers_columns[1].dataframe(
+                    losers_table.rename(columns={"ticker": "Ticker", "industry": "Industry",
+                                                  "pct_change": "Change"}),
+                    use_container_width=True, hide_index=True)
+
+        industry_moves = brief.get("industry_moves", [])
+        if industry_moves:
+            st.markdown('<div class="sc-label" style="margin-top:1.4rem">By industry</div>',
+                        unsafe_allow_html=True)
+            industry_chart_data = pd.DataFrame(industry_moves)
+            industry_chart = alt.Chart(industry_chart_data).mark_bar(color=ACCENT).encode(
+                x=alt.X("pct_change:Q", title="Avg. move", axis=alt.Axis(format="%")),
+                y=alt.Y("industry:N", sort="-x", title=None),
+                tooltip=["industry", "pct_change"],
+            ).properties(height=280)
+            st.altair_chart(industry_chart, use_container_width=True)
+
+        ticker_notes = brief.get("ticker_notes", {})
+        if ticker_notes:
+            st.markdown('<div class="sc-label" style="margin-top:1.4rem">Ticker notes</div>',
+                        unsafe_allow_html=True)
+            notes_table = pd.DataFrame(
+                [{"Ticker": ticker, "Note": note} for ticker, note in ticker_notes.items()]
+            )
+            st.dataframe(notes_table, use_container_width=True, hide_index=True)
+    else:
+        st.markdown('<div class="sc-label">This morning</div>', unsafe_allow_html=True)
+        st.markdown(
+            '<div class="sc-card"><strong>No brief yet.</strong>'
+            '<div class="sc-sub" style="margin-top:.5rem; line-height:1.6">'
+            'The morning brief is generated alongside the daily candidate refresh '
+            '(<code>python3 research_pipeline.py --rank-candidates</code>) — run it once to see one here.'
+            '</div></div>',
             unsafe_allow_html=True,
         )
 

@@ -12,7 +12,7 @@ Flow (PrimoAgent's linear pipeline + TradingAgents' bounded debate loop):
                                             selected factor set
 
 The manager's selection is handed to the feature-writing step in
-run_phase_c_loop.py, which is unchanged in how it evaluates: the deterministic
+research_pipeline.py, which is unchanged in how it evaluates: the deterministic
 judge still scores whatever gets written, and no agent here can influence a score.
 """
 from __future__ import annotations

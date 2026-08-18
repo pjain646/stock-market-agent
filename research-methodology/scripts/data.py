@@ -784,6 +784,78 @@ def fetch_company_news(ticker: str, from_date, to_date) -> pd.DataFrame:
             .reset_index(drop=True))
 
 
+_FINNHUB_MARKET_NEWS_URL = "https://finnhub.io/api/v1/news"
+
+
+def fetch_market_news(category: str = "general", max_articles: int = 30) -> pd.DataFrame:
+    """Latest general market/macro headlines — NOT ticker-specific, NOT point-in-time.
+
+    Same provider and key as `fetch_company_news` (Finnhub), a different endpoint:
+    "give me what's happening right now" rather than a fixed historical window for
+    one symbol. Used only for the forward-looking morning brief (see
+    `core/morning_brief.py`) — like `fetch_company_news`'s use in live sentiment,
+    this has no place in a backtest (no stable historical window to query).
+
+    Args:
+        category: Finnhub news category, e.g. "general", "forex", "crypto", "merger".
+        max_articles: newest N articles to keep.
+
+    Returns:
+        DataFrame [datetime, headline, summary, source, url, related], newest first.
+        Empty DataFrame if the category has no coverage right now.
+    """
+    import requests
+
+    columns = ["datetime", "headline", "summary", "source", "url", "related"]
+    api_key = _load_api_key("FINNHUB_API_KEY")
+
+    # Keyed to today's date, not a window: "latest general news" changes hour to
+    # hour, so (unlike the immutable historical windows `fetch_company_news`
+    # caches forever) this cache is only ever fresh for the day it was fetched.
+    today_str = pd.Timestamp.today().strftime("%Y-%m-%d")
+    cache_signature = f"news_general__category={category}__{today_str}"
+    _FINNHUB_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    cache_file = _FINNHUB_CACHE_DIR / f"{cache_signature}.json"
+    if cache_file.exists():
+        payload = json.loads(cache_file.read_text())
+    else:
+        response = requests.get(
+            _FINNHUB_MARKET_NEWS_URL,
+            params={"category": category, "token": api_key},
+            timeout=30,
+        )
+        if response.status_code == 401:
+            raise RuntimeError("Finnhub rejected the API key (401).")
+        if response.status_code == 429:
+            raise RuntimeError("Finnhub rate limit hit (429) — slow down or upgrade the plan.")
+        response.raise_for_status()
+        payload = response.json()
+        cache_file.write_text(json.dumps(payload))
+
+    if not isinstance(payload, list) or not payload:
+        return pd.DataFrame(columns=columns)
+
+    records = []
+    for article in payload:
+        published = article.get("datetime")
+        if not published:
+            continue
+        records.append({
+            "datetime": pd.to_datetime(published, unit="s"),
+            "headline": article.get("headline", ""),
+            "summary": article.get("summary", ""),
+            "source": article.get("source", ""),
+            "url": article.get("url", ""),
+            "related": article.get("related", ""),
+        })
+    if not records:
+        return pd.DataFrame(columns=columns)
+    return (pd.DataFrame(records)
+            .sort_values("datetime", ascending=False)
+            .head(max_articles)
+            .reset_index(drop=True))
+
+
 def fetch_news(tickers):  # pragma: no cover - superseded
     """Deprecated: use `fetch_company_news(ticker, from_date, to_date)` instead.
 

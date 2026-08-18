@@ -37,7 +37,7 @@ jobs:
           FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
           ALPHA_VANTAGE_API_KEY: ${{ secrets.ALPHA_VANTAGE_API_KEY }}
           SEC_CONTACT_EMAIL: ${{ secrets.SEC_CONTACT_EMAIL }}
-        run: python run_phase_c_loop.py --rank-candidates
+        run: python research_pipeline.py --rank-candidates
 
       - name: Commit results back (updates the deployed dashboard)
         run: |

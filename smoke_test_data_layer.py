@@ -5,7 +5,7 @@ PLACEHOLDERS (simple price transforms) used only to exercise the machinery — t
 are NOT proposed signals. Real features come from the LLM researcher later
 (Phase C); the evaluator doesn't care where a feature came from.
 
-Run:  python run_phase_a_demo.py
+Run:  python smoke_test_data_layer.py
 (Needs internet for yfinance; ~24 tickers x ~10 years.)
 """
 import pathlib

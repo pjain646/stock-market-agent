@@ -1,7 +1,13 @@
-# Daily stock-pick refresh — no LLM involved. `--rank-candidates` just
-# re-fetches today's prices and re-scores the already-proven signals through
-# their fixed, already-fitted model, so this is deterministic and needs no
-# ANTHROPIC_API_KEY (unlike research-run.yml, which drives the researcher).
+# Daily stock-pick + morning-brief refresh. `--rank-candidates` itself is
+# deterministic (re-fetches today's prices, re-scores the already-proven
+# signals through their fixed, already-fitted model) — but it now also
+# generates the morning brief (core/morning_brief.py), which makes ONE LLM
+# call to synthesize macro/market-internals/ticker news into prose. That call
+# authenticates via CLAUDE_CODE_OAUTH_TOKEN (a subscription token from
+# `claude setup-token`), never ANTHROPIC_API_KEY — deliberately, so this
+# unattended daily job draws from Preyansh's Pro/Max plan usage instead of
+# metered API billing. A failed/missing brief does not fail candidate
+# ranking (see generate_morning_brief's try/except in research_pipeline.py).
 #
 # Runs on every US trading day. Cron is UTC; 12:30 UTC is ~07:30 ET, safely
 # after the prior session's data has settled and before market open, so
@@ -36,18 +42,30 @@ jobs:
           python-version: "3.12"
           cache: pip
 
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: |
+          pip install -r requirements.txt
+          # Not in requirements.txt (see its own comment): no prebuilt wheel
+          # for newer Pythons yet, which hung the Streamlit Cloud dashboard
+          # build. Installed separately here, same as research-run.yml.
+          pip install claude-agent-sdk==0.2.110
+          npm install -g @anthropic-ai/claude-code
 
       - name: Configure git for automated commits
         run: |
           git config user.name "research-bot"
           git config user.email "actions@github.com"
 
-      - name: Re-rank today's stock candidates
+      - name: Re-rank today's stock candidates + generate the morning brief
         env:
           FMP_API_KEY: ${{ secrets.FMP_API_KEY }}
           FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
           ALPHA_VANTAGE_API_KEY: ${{ secrets.ALPHA_VANTAGE_API_KEY }}
           SEC_CONTACT_EMAIL: ${{ secrets.SEC_CONTACT_EMAIL }}
-        run: python run_phase_c_loop.py --rank-candidates --push
+          FINNHUB_API_KEY: ${{ secrets.FINNHUB_API_KEY }}
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+        run: python research_pipeline.py --rank-candidates --push

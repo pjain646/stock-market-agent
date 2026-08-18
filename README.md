@@ -38,13 +38,13 @@ raise the effective sample size behind every score.
 
 | Path | What it is |
 |---|---|
-| `run_phase_c_loop.py` | **The main entry point** — the research loop orchestrator (the only file that knows the Claude Agent SDK exists) |
+| `research_pipeline.py` | **The main entry point** — the research loop orchestrator (the only file that knows the Claude Agent SDK exists) |
 | `dashboard.py` | Streamlit dashboard: signals, predictions, experiment detail, holdout verdicts, run controls, glossary |
 | `core/` | Domain core, harness-independent: labeling, splits, purged evaluator, feature pipeline, journal |
 | `research-methodology/` | The Claude skill governing the researcher, with the bundled point-in-time data fetchers (`scripts/data.py`: SEC EDGAR, FMP, Alpha Vantage, FRED, Form 4) |
 | `proposals/` | One folder per iteration: the researcher's `feature.py`, session transcript, and the exact out-of-sample rows behind its score |
 | `journal.db` | The journal (SQLite): every hypothesis, verdict, reflection, cost |
-| `run_phase_a_demo.py` | No-LLM smoke test of the whole data layer: fetch → features → label → split → score |
+| `smoke_test_data_layer.py` | No-LLM smoke test of the whole data layer: fetch → features → label → split → score |
 | `.github/workflows/research-run.yml` | Remote research runs via GitHub Actions ("Run workflow" button) |
 
 ## Setup — get your own bot running
@@ -86,7 +86,7 @@ daily limits are fine in practice.
 ### 3. Verify the data layer (no LLM, free)
 
 ```bash
-python3 run_phase_a_demo.py
+python3 smoke_test_data_layer.py
 ```
 
 Fetches everything, builds features, and scores them out-of-sample. If this
@@ -99,13 +99,13 @@ prints a metrics dict at the end, your data layer works.
 streamlit run dashboard.py
 
 # send the researcher on a run (n iterations, hard $ cap per iteration)
-python3 run_phase_c_loop.py --iterations 5 --budget-usd 5
+python3 research_pipeline.py --iterations 5 --budget-usd 5
 
 # end of a research run: open the sealed holdout ONCE for the Gate 1 verdict
-python3 run_phase_c_loop.py --final-verdict
+python3 research_pipeline.py --final-verdict
 
 # after local runs: publish results to the deployed dashboard
-python3 run_phase_c_loop.py --iterations 5 --push
+python3 research_pipeline.py --iterations 5 --push
 ```
 
 ### 5. Deploy (optional)
@@ -170,5 +170,5 @@ universe is added. Results are research signals, not investment advice.
   option structures (gated on Stage 2).
 - **Scale:** 500+ tickers, deeper per-industry models.
 - **Own orchestration:** replace the Claude Agent SDK shell with a hand-built
-  agent loop on the raw API (the clean seam in `run_phase_c_loop.py` exists for
+  agent loop on the raw API (the clean seam in `research_pipeline.py` exists for
   exactly this swap).
