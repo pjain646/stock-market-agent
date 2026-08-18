@@ -430,7 +430,10 @@ def freshness_indicator(as_of_date) -> str:
     try:
         data_date = pd.to_datetime(as_of_date).date()
         trading_days_stale = int(np.busday_count(data_date, datetime.date.today()))
-    except (ValueError, TypeError):
+    except (ValueError, TypeError, AttributeError):
+        # AttributeError: pd.to_datetime(None) returns None, not NaT — a
+        # missing/null as_of value (e.g. as_of_date=None) hits this, not the
+        # parse-error cases above.
         return badge("date unknown", "muted")
 
     if trading_days_stale <= 0:
@@ -799,7 +802,12 @@ if active_tab == "Morning brief":
             ).properties(height=280)
             st.altair_chart(industry_chart, use_container_width=True)
 
+        # .get() only checks the key exists, not its type — a hand-edited or
+        # older-format morning_brief.json could carry a non-dict value here,
+        # and ticker_notes.items() below would crash the whole tab.
         ticker_notes = brief.get("ticker_notes", {})
+        if not isinstance(ticker_notes, dict):
+            ticker_notes = {}
         if ticker_notes:
             st.markdown('<div class="sc-label" style="margin-top:1.4rem">Ticker notes</div>',
                         unsafe_allow_html=True)

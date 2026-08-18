@@ -137,6 +137,25 @@ def record_session_artifacts(experiment_id: int, transcript_path: str | None = N
         )
 
 
+def holdout_already_opened(experiment_id: int,
+                           journal_path: Path | str = DEFAULT_JOURNAL_PATH) -> bool:
+    """Has this experiment's sealed holdout already been opened?
+
+    The "opens exactly once" guarantee (spec §6) was previously enforced only
+    by a caller-supplied acknowledgement flag, with nothing checking the
+    journal itself — so a second run of the final-holdout step (e.g. after a
+    crash/retry) could silently re-open and re-score an already-judged
+    signal, and holdout_verdicts has no UNIQUE constraint to catch it at
+    write time either. Callers must check this BEFORE opening the holdout.
+    """
+    with _connect(journal_path) as connection:
+        row = connection.execute(
+            "SELECT 1 FROM holdout_verdicts WHERE experiment_id = ? LIMIT 1",
+            (experiment_id,),
+        ).fetchone()
+    return row is not None
+
+
 def record_holdout_verdict(experiment_id: int, validation_score: float, metrics: dict,
                            journal_path: Path | str = DEFAULT_JOURNAL_PATH) -> dict:
     """Record the open-once holdout verdict for a signal; returns the verdict summary.

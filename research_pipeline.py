@@ -73,7 +73,10 @@ def add_feature(panel):
 
     Args:
         panel: pandas DataFrame with columns [date, ticker, industry, adj_close,
-               label, split] (one row per ticker per trading day).
+               label, split] (one row per ticker per trading day). `split` is
+               'train'/'validation'/'holdout' during research, or 'live' for
+               today's unlabeled prediction rows at candidate-ranking time —
+               never assume it's only the first three.
     Returns:
         (panel_with_new_columns, list_of_new_feature_column_names)
         — one column per factor in the bundle; the evaluator scores all of
@@ -112,6 +115,13 @@ def build_live_panel() -> pd.DataFrame:
     train/validation/holdout split is applied — candidate ranking doesn't need
     one; only `positive_signals`' feature code and the label's NaN/non-NaN
     split (labeled = train on it, unlabeled = predict on it) matter here.
+
+    FEATURE_CONTRACT documents `split` as an always-present column, so this
+    still sets one — "live" throughout, not train/validation/holdout, since
+    those terms describe a backtest this panel isn't. Without this, a proven
+    signal's feature code that reads `panel["split"]` (a reasonable thing to
+    do given the documented contract) would KeyError here even though it
+    works fine against `build_panel()`'s output.
     """
     import datetime
 
@@ -122,7 +132,9 @@ def build_live_panel() -> pd.DataFrame:
     print(f"fetching {len(tickers)} tickers {config.START}..{today} (live, uncached) ...")
     panel = fetch_prices(tickers, config.START, today)
     panel["industry"] = panel["ticker"].map(config.industry_map())
-    return add_forward_direction_label(panel, forward_horizon_days=config.LABEL_HORIZON)
+    panel = add_forward_direction_label(panel, forward_horizon_days=config.LABEL_HORIZON)
+    panel["split"] = "live"
+    return panel
 
 
 def _news_source_available() -> bool:
@@ -439,6 +451,12 @@ def final_holdout_verdict(panel: pd.DataFrame) -> None:
     if best is None:
         print("no tested signals in the journal — nothing to judge")
         return
+    if journal.holdout_already_opened(best["id"]):
+        raise RuntimeError(
+            f"the holdout for experiment {best['id']} ({best['signal_name']}) was already "
+            "opened once — refusing to open it again. This guarantee exists so a re-run "
+            "can't get a second look at sealed data and quietly keep the better result."
+        )
 
     print(f"opening the holdout for the best journal signal: {best['signal_name']} "
           f"(validation tested_score {best['tested_score']:+.4f})")
@@ -505,11 +523,11 @@ def generate_morning_brief(panel: pd.DataFrame) -> None:
 
     try:
         brief, cost = morning_brief.build_morning_brief(panel)
+        morning_brief.save_brief(brief, MORNING_BRIEF_PATH)
     except Exception as brief_error:
         print(f"morning brief generation failed (non-fatal): {brief_error}")
         return
 
-    morning_brief.save_brief(brief, MORNING_BRIEF_PATH)
     print(f"morning brief saved to {MORNING_BRIEF_PATH.relative_to(PROJECT_ROOT)} "
           f"(cost ${cost:.4f})")
 

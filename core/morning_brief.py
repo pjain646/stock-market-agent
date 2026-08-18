@@ -228,6 +228,13 @@ def build_morning_brief(panel: pd.DataFrame, as_of=None) -> tuple[dict, float]:
     narrative, cost = synthesize_brief(market_news, internals, ticker_headlines)
 
     as_of_str = (pd.Timestamp(as_of) if as_of else pd.Timestamp.today()).strftime("%Y-%m-%d")
+    # The LLM is only asked (via the system prompt), never forced, to shape
+    # `tickers` as an object keyed by ticker — a plain JSON parse success
+    # doesn't guarantee that shape. Coerce here so a drifted reply degrades
+    # to "no ticker notes" instead of crashing whatever reads the saved file.
+    ticker_notes = narrative.get("tickers", {})
+    if not isinstance(ticker_notes, dict):
+        ticker_notes = {}
     return {
         "as_of": as_of_str,
         "macro": narrative.get("macro", ""),
@@ -235,7 +242,7 @@ def build_morning_brief(panel: pd.DataFrame, as_of=None) -> tuple[dict, float]:
         "gainers": internals["gainers"],
         "losers": internals["losers"],
         "industry_moves": internals["industry_moves"],
-        "ticker_notes": narrative.get("tickers", {}),
+        "ticker_notes": ticker_notes,
     }, cost
 
 

@@ -41,6 +41,20 @@ def assign_time_split(
     last_train_index = int(total_dates * split_fractions[0])
     last_validation_index = int(total_dates * (split_fractions[0] + split_fractions[1]))
 
+    # Too few unique dates for the requested fractions to carve out all three
+    # blocks: `last_train_index - 1` (or `last_validation_index - 1`) would be
+    # -1, and Python's negative-index wraparound would silently return the
+    # NEWEST date as train_end_date instead of raising — mislabeling every
+    # row "train" with no validation/holdout split and no error. Fail loudly
+    # instead; a real dataset (the pipeline's ~10 years of daily data) is
+    # never this small, so this only fires on a genuinely too-small input.
+    if last_train_index < 1 or last_validation_index <= last_train_index or \
+            total_dates <= last_validation_index:
+        raise ValueError(
+            f"not enough unique dates ({total_dates}) to split by fractions "
+            f"{split_fractions} into three non-empty blocks"
+        )
+
     train_end_date = unique_dates_sorted[last_train_index - 1]
     validation_end_date = unique_dates_sorted[last_validation_index - 1]
 

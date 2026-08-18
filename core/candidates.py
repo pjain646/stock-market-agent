@@ -41,8 +41,12 @@ def positive_signals(journal_connection) -> list[dict]:
     Returns the raw rows (as dicts) needed to reload each signal's feature
     code: iteration, signal_name, feature_code_path, feature_columns.
     """
+    # DISTINCT guards against an experiment somehow acquiring more than one
+    # holdout_verdicts row (the join would otherwise return it once per
+    # verdict row, double-counting the same signal in build_combined_panel).
     rows = journal_connection.execute(
-        "SELECT e.iteration, e.signal_name, e.feature_code_path, e.feature_columns, e.tested_score"
+        "SELECT DISTINCT e.iteration, e.signal_name, e.feature_code_path,"
+        " e.feature_columns, e.tested_score"
         " FROM experiments e JOIN holdout_verdicts v ON v.experiment_id = e.id"
         " WHERE e.status = 'tested' AND e.tested_score > 0 AND v.gate1_passed = 1"
         " ORDER BY e.tested_score DESC"
