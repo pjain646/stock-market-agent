@@ -717,6 +717,14 @@ def push_candidates_to_git() -> None:
         print(f"  nothing to push ({commit.stdout.strip() or commit.stderr.strip()})")
         return
     push = git("push")
+    if push.returncode != 0:
+        # Someone else pushed to main while this run was in progress (e.g. a
+        # manual push): rebase this run's single commit on top and retry once,
+        # rather than losing today's candidates/brief to a race.
+        print(f"  push rejected, retrying after rebase: {push.stderr.strip()}")
+        git("fetch", "origin", "main")
+        rebase = git("rebase", "origin/main")
+        push = git("push") if rebase.returncode == 0 else rebase
     print("  pushed — deployed dashboard will refresh" if push.returncode == 0
           else f"  push failed: {push.stderr.strip()}")
 
