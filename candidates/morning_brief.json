@@ -1,176 +1,189 @@
 {
-  "as_of": "2026-08-18",
-  "macro": "",
-  "internals_narrative": "",
+  "as_of": "2026-08-19",
+  "macro": "Middle East tensions dominate: Iran says the Strait of Hormuz stays shut until the U.S. meets interim deal conditions, oil hit a three-week high, and the UAE imposed a financial embargo after detecting missiles it says were launched from Iran, with Trump saying no talks are planned. Meanwhile, surging U.S. government bond yields \u2014 the 30-year hitting a 19-year high \u2014 pressured equities and drove a sharp tech selloff overnight. Retail earnings and ongoing Turkey-Israel-Syria friction are also in focus, leaving U.S. futures roughly flat.",
+  "internals_narrative": "Defensive and energy leadership showed through as CommunicationServices (+1.3%), Pharma (+1.2%) and Energy (+1.1%) led while Materials (-1.2%) and Technology (-0.6%) lagged; chip and industrial names dominated the losers with INTC -6.6%, ETN -5.3%, CAT -4.6%, META -4.4% and AMD -4.3%, versus gainers INTU +4.4%, LLY +3.6% and ADBE +3.6%.",
   "gainers": [
     {
-      "ticker": "DVN",
-      "industry": "Energy",
-      "pct_change": 0.037513659279049705,
-      "as_of": "2026-08-17"
-    },
-    {
-      "ticker": "PSX",
-      "industry": "Energy",
-      "pct_change": 0.029707642751911845,
-      "as_of": "2026-08-17"
-    },
-    {
-      "ticker": "CAT",
-      "industry": "Industrials",
-      "pct_change": 0.02927958821274812,
-      "as_of": "2026-08-17"
-    },
-    {
-      "ticker": "FCX",
-      "industry": "Materials",
-      "pct_change": 0.028425318850525905,
-      "as_of": "2026-08-17"
-    },
-    {
-      "ticker": "EOG",
-      "industry": "Energy",
-      "pct_change": 0.024822896507833425,
-      "as_of": "2026-08-17"
-    },
-    {
-      "ticker": "NEM",
-      "industry": "Materials",
-      "pct_change": 0.021824045925637137,
-      "as_of": "2026-08-17"
-    },
-    {
-      "ticker": "UNP",
-      "industry": "Industrials",
-      "pct_change": 0.02117951980327759,
-      "as_of": "2026-08-17"
-    },
-    {
-      "ticker": "VLO",
-      "industry": "Energy",
-      "pct_change": 0.01615590715232429,
-      "as_of": "2026-08-17"
-    },
-    {
-      "ticker": "XOM",
-      "industry": "Energy",
-      "pct_change": 0.01502482730623833,
-      "as_of": "2026-08-17"
-    },
-    {
-      "ticker": "NUE",
-      "industry": "Materials",
-      "pct_change": 0.014019519401773373,
-      "as_of": "2026-08-17"
-    }
-  ],
-  "losers": [
-    {
-      "ticker": "CHTR",
-      "industry": "CommunicationServices",
-      "pct_change": -0.06592336739022686,
-      "as_of": "2026-08-17"
-    },
-    {
-      "ticker": "STZ",
-      "industry": "ConsumerStaples",
-      "pct_change": -0.06193415412276759,
-      "as_of": "2026-08-17"
-    },
-    {
-      "ticker": "NOW",
+      "ticker": "INTU",
       "industry": "Technology",
-      "pct_change": -0.05080647622385337,
-      "as_of": "2026-08-17"
+      "pct_change": 0.04412990849000642,
+      "as_of": "2026-08-18"
     },
     {
-      "ticker": "ROST",
-      "industry": "ConsumerDiscretionary",
-      "pct_change": -0.041082498394114486,
-      "as_of": "2026-08-17"
-    },
-    {
-      "ticker": "NKE",
-      "industry": "ConsumerDiscretionary",
-      "pct_change": -0.040265146282356,
-      "as_of": "2026-08-17"
-    },
-    {
-      "ticker": "ACN",
-      "industry": "Technology",
-      "pct_change": -0.03906384581351152,
-      "as_of": "2026-08-17"
+      "ticker": "LLY",
+      "industry": "Pharma",
+      "pct_change": 0.03597987174962114,
+      "as_of": "2026-08-18"
     },
     {
       "ticker": "ADBE",
       "industry": "Technology",
-      "pct_change": -0.03780015204463272,
-      "as_of": "2026-08-17"
+      "pct_change": 0.035821215567641174,
+      "as_of": "2026-08-18"
+    },
+    {
+      "ticker": "ABBV",
+      "industry": "Pharma",
+      "pct_change": 0.03431475066451295,
+      "as_of": "2026-08-18"
+    },
+    {
+      "ticker": "JNJ",
+      "industry": "Pharma",
+      "pct_change": 0.03331169873472484,
+      "as_of": "2026-08-18"
+    },
+    {
+      "ticker": "NOC",
+      "industry": "Industrials",
+      "pct_change": 0.03321641886343807,
+      "as_of": "2026-08-18"
+    },
+    {
+      "ticker": "GILD",
+      "industry": "Pharma",
+      "pct_change": 0.03253674296024678,
+      "as_of": "2026-08-18"
+    },
+    {
+      "ticker": "CHTR",
+      "industry": "CommunicationServices",
+      "pct_change": 0.029493406106776865,
+      "as_of": "2026-08-18"
+    },
+    {
+      "ticker": "CRM",
+      "industry": "Technology",
+      "pct_change": 0.027072305262072938,
+      "as_of": "2026-08-18"
+    },
+    {
+      "ticker": "XOM",
+      "industry": "Energy",
+      "pct_change": 0.02539322850390069,
+      "as_of": "2026-08-18"
+    }
+  ],
+  "losers": [
+    {
+      "ticker": "INTC",
+      "industry": "Technology",
+      "pct_change": -0.06570678870159552,
+      "as_of": "2026-08-18"
+    },
+    {
+      "ticker": "ETN",
+      "industry": "Industrials",
+      "pct_change": -0.05285465008084744,
+      "as_of": "2026-08-18"
+    },
+    {
+      "ticker": "CAT",
+      "industry": "Industrials",
+      "pct_change": -0.04625421444748112,
+      "as_of": "2026-08-18"
     },
     {
       "ticker": "META",
       "industry": "Technology",
-      "pct_change": -0.035398839954296824,
-      "as_of": "2026-08-17"
+      "pct_change": -0.044466297160996704,
+      "as_of": "2026-08-18"
     },
     {
-      "ticker": "BKNG",
-      "industry": "ConsumerDiscretionary",
-      "pct_change": -0.03442423434783248,
-      "as_of": "2026-08-17"
+      "ticker": "AMD",
+      "industry": "Technology",
+      "pct_change": -0.042707480931941655,
+      "as_of": "2026-08-18"
     },
     {
-      "ticker": "CVS",
-      "industry": "Pharma",
-      "pct_change": -0.03242076376235614,
-      "as_of": "2026-08-17"
+      "ticker": "TXN",
+      "industry": "Technology",
+      "pct_change": -0.037715221411816824,
+      "as_of": "2026-08-18"
+    },
+    {
+      "ticker": "NEM",
+      "industry": "Materials",
+      "pct_change": -0.03615057265791921,
+      "as_of": "2026-08-18"
+    },
+    {
+      "ticker": "AVGO",
+      "industry": "Technology",
+      "pct_change": -0.0316744206808135,
+      "as_of": "2026-08-18"
+    },
+    {
+      "ticker": "NUE",
+      "industry": "Materials",
+      "pct_change": -0.031135361824912722,
+      "as_of": "2026-08-18"
+    },
+    {
+      "ticker": "FCX",
+      "industry": "Materials",
+      "pct_change": -0.03012573327488366,
+      "as_of": "2026-08-18"
     }
   ],
   "industry_moves": [
     {
-      "industry": "Energy",
-      "pct_change": 0.010194196008246201
-    },
-    {
-      "industry": "Utilities",
-      "pct_change": -0.0018171097543771663
-    },
-    {
-      "industry": "Materials",
-      "pct_change": -0.0024795411265773337
-    },
-    {
-      "industry": "RealEstate",
-      "pct_change": -0.005334369334970468
+      "industry": "CommunicationServices",
+      "pct_change": 0.012821859459526474
     },
     {
       "industry": "Pharma",
-      "pct_change": -0.0063170885500767274
+      "pct_change": 0.011707070471158609
     },
     {
-      "industry": "Industrials",
-      "pct_change": -0.006899446228621635
-    },
-    {
-      "industry": "Financials",
-      "pct_change": -0.009801751904316676
-    },
-    {
-      "industry": "ConsumerDiscretionary",
-      "pct_change": -0.015818261419643435
-    },
-    {
-      "industry": "Technology",
-      "pct_change": -0.01714905859702276
+      "industry": "Energy",
+      "pct_change": 0.011411761176003319
     },
     {
       "industry": "ConsumerStaples",
-      "pct_change": -0.02056389908080772
+      "pct_change": 0.008945544532990546
     },
     {
-      "industry": "CommunicationServices",
-      "pct_change": -0.022441066633405483
+      "industry": "Financials",
+      "pct_change": 0.004073373154878515
+    },
+    {
+      "industry": "ConsumerDiscretionary",
+      "pct_change": 0.0018738862844896195
+    },
+    {
+      "industry": "Utilities",
+      "pct_change": 0.0009774528369544215
+    },
+    {
+      "industry": "RealEstate",
+      "pct_change": -0.00394959617000995
+    },
+    {
+      "industry": "Industrials",
+      "pct_change": -0.005338210931887281
+    },
+    {
+      "industry": "Technology",
+      "pct_change": -0.005827867535912562
+    },
+    {
+      "industry": "Materials",
+      "pct_change": -0.011876415749290038
     }
   ],
-  "ticker_notes": {}
+  "ticker_notes": {
+    "INTC": "Intel led decliners as chip names crumbled with the 30-year yield hitting a 19-year high.",
+    "ETN": "Eaton fell despite touting a collaboration with Trane Technologies to boost AI-data-center efficiency.",
+    "META": "Meta slid as it faces a high-stakes federal trial over child safety amid the broader tech and yield-driven selloff.",
+    "AMD": "AMD dropped alongside Nvidia and Broadcom as surging bond yields hit chip stocks, with commentary on dilution and insider sales.",
+    "TXN": "Cantor Fitzgerald reiterated a Neutral rating on Texas Instruments with a $340 price target.",
+    "NEM": "Newmont pulled back even as gold miners eye their best month since April 2020.",
+    "NOC": "Northrop Grumman in focus as Elizabeth Warren targets defense contractors' $100 billion shareholder payouts.",
+    "ABBV": "Wells Fargo maintained Overweight on AbbVie and raised its price target to $300.",
+    "AMD_note": "",
+    "AEP": "Carl Icahn trimmed his AEP stake, and Truist maintained Buy while lowering its price target to $139.",
+    "AIG": "Cantor Fitzgerald kept an Overweight rating on AIG but lowered its price target to $90.",
+    "LLY": "Eli Lilly Canada said it continues acting against unapproved retatrutide products and disputes the Canada Revenue Agency's characterizations."
+  }
 }
