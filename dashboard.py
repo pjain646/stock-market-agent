@@ -18,6 +18,7 @@ Run:  streamlit run dashboard.py
 from __future__ import annotations
 
 import datetime
+import html
 import json
 import pathlib
 import re
@@ -415,6 +416,55 @@ def badge(text: str, tone: str = "muted", title: str = "") -> str:
     return f'<span class="sc-badge sc-badge-{tone}"{title_attr}>{_escape_dollar(text)}</span>'
 
 
+def _time_ago(iso_datetime: str) -> str:
+    """'2h ago' / '3d ago' style label from an ISO datetime string."""
+    try:
+        published = pd.to_datetime(iso_datetime)
+        now = pd.Timestamp.now(tz=published.tzinfo) if published.tzinfo else pd.Timestamp.now()
+        hours = (now - published).total_seconds() / 3600
+    except (ValueError, TypeError):
+        return ""
+    if hours < 0:
+        return ""
+    if hours < 1:
+        return f"{max(int(hours * 60), 1)}m ago"
+    if hours < 24:
+        return f"{hours:.0f}h ago"
+    return f"{hours / 24:.0f}d ago"
+
+
+def render_articles(articles: list[dict]) -> str:
+    """Morning-brief "top stories": real, clickable links straight from the
+    fetched news records (never LLM-authored) — see
+    `core/morning_brief.py`'s `_index_headlines`/`synthesize_brief` for how
+    the LLM's article picks get resolved back to their original url/source."""
+    rows = []
+    for article in articles:
+        ticker = article.get("ticker")
+        tag = badge(ticker, "solid") if ticker else badge("MACRO", "muted")
+        headline = html.escape(str(article.get("headline", "")))
+        url = html.escape(str(article.get("url", "")), quote=True)
+        source = html.escape(str(article.get("source", "")))
+        when = _time_ago(article.get("datetime", ""))
+        meta = " · ".join(part for part in [source, when] if part)
+        headline_html = (
+            f'<a href="{url}" target="_blank" rel="noopener noreferrer" '
+            f'style="color:{ZINC["950"]}; text-decoration:none; font-weight:500;">{headline}</a>'
+        ) if url else f'<span style="color:{ZINC["950"]}; font-weight:500;">{headline}</span>'
+        rows.append(
+            '<div style="display:flex; gap:.6rem; align-items:flex-start; padding:.55rem 0; '
+            f'border-bottom:1px solid {ZINC["200"]};">'
+            f'<div style="flex-shrink:0; padding-top:.15rem;">{tag}</div>'
+            '<div style="flex:1; min-width:0;">'
+            f'<div style="font-size:.92rem; line-height:1.4;">{headline_html}</div>'
+            f'<div class="sc-sub" style="margin-top:.15rem;">{meta}</div>'
+            "</div></div>"
+        )
+    if rows:
+        rows[-1] = rows[-1].replace(f'border-bottom:1px solid {ZINC["200"]};', "", 1)
+    return f'<div class="sc-card">{"".join(rows)}</div>'
+
+
 def freshness_indicator(as_of_date) -> str:
     """Badge HTML for how stale a piece of daily-refreshed data is, derived
     purely from the data's own date vs. today's date — not from any live
@@ -761,6 +811,14 @@ if active_tab == "Morning brief":
             card("Macro / world", macro_text or "No macro news synthesized for this run.",
                 wrap=True, icon="public"),
             unsafe_allow_html=True)
+
+        articles = brief.get("articles", [])
+        if not isinstance(articles, list):
+            articles = []
+        if articles:
+            st.markdown('<div class="sc-label" style="margin-top:1.4rem">Top stories</div>',
+                        unsafe_allow_html=True)
+            st.markdown(render_articles(articles), unsafe_allow_html=True)
 
         internals_text = brief.get("internals_narrative", "").strip()
         if internals_text:
