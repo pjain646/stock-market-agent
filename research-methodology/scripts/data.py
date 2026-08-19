@@ -13,9 +13,10 @@ Honesty rules are enforced here in code, not left to the caller to remember:
     yet known — the point-in-time rule, in code.
 
 Functions:
-  fetch_prices              -- adjusted daily closes (yfinance)
-  fetch_prices_incremental  -- fetch_prices, backed by a growing on-disk cache
-  fetch_fundamentals        -- point-in-time financial-statement line items (SEC EDGAR)
+  fetch_prices               -- adjusted daily closes (yfinance)
+  fetch_prices_incremental   -- fetch_prices, backed by a growing on-disk cache
+  fetch_fundamentals         -- point-in-time financial-statement line items
+                                (SEC EDGAR), cached per ticker, biweekly refresh
   fetch_insider_transactions -- Form 4 insider buys/sells, cached by filing
                                 accession number (SEC EDGAR)
 """
@@ -191,13 +192,37 @@ def _ticker_to_cik_map() -> dict:
     return _cached_ticker_to_cik_map
 
 
-def fetch_fundamentals(tickers, concepts=None, start_date=None, end_date=None) -> pd.DataFrame:
+_FUNDAMENTALS_CACHE_PATH = pathlib.Path("candidates") / "fundamentals_cache.parquet"
+_FUNDAMENTALS_COLUMNS = [
+    "ticker", "concept", "unit", "period_start", "period_end", "filed_date",
+    "value", "fiscal_year", "fiscal_period", "form",
+]
+
+
+def fetch_fundamentals(tickers, concepts=None, start_date=None, end_date=None,
+                       cache_path: pathlib.Path = _FUNDAMENTALS_CACHE_PATH) -> pd.DataFrame:
     """Point-in-time financial-statement values from SEC EDGAR.
 
     For each ticker, pulls the requested XBRL concepts and returns every reported
     value WITH the date it was filed — which is what makes this point-in-time:
     a downstream feature can use a value only as of its `filed_date`, never
     earlier.
+
+    Cached like the price/insider caches, for the same reason: a company only
+    files a new 10-Q/10-K (the only things that change this data) at most ~4
+    times a year, so re-fetching all 169 tickers every single day is mostly
+    downloading data we already have. A ticker already in the cache is served
+    straight from disk; only a ticker missing from the cache gets fetched.
+    Every other Monday, ALL requested tickers get a full re-fetch instead (same
+    biweekly cadence as the price cache), to pick up whatever's been newly
+    filed since the last refresh — bounding staleness to ~2 weeks against a
+    real filing cadence of ~3 months.
+
+    We cache EVERY concept SEC returns for a ticker, not just the ones this
+    particular call asked for — company-facts comes back as one all-concepts
+    blob per ticker regardless, so caching the whole thing means a later call
+    asking for different concepts on an already-cached ticker still hits cache
+    instead of re-fetching.
 
     Args:
         tickers: ticker string or list of tickers.
@@ -216,31 +241,41 @@ def fetch_fundamentals(tickers, concepts=None, start_date=None, end_date=None) -
         year-to-date totals under the same `period_end`, and `period_start`
         is what tells them apart.)
     """
+    import datetime
+
     if isinstance(tickers, str):
         tickers = [tickers]
     concepts = concepts or DEFAULT_FUNDAMENTAL_CONCEPTS
+    requested_tickers = {t.upper() for t in tickers}
+
+    cached = (pd.read_parquet(cache_path) if cache_path.exists()
+             else pd.DataFrame(columns=_FUNDAMENTALS_COLUMNS))
+    cached_tickers = set(cached["ticker"].unique()) if not cached.empty else set()
+
+    today = datetime.date.today()
+    full_refresh = today.weekday() == 0 and today.isocalendar()[1] % 2 == 0
+    tickers_to_fetch = (sorted(requested_tickers) if full_refresh
+                        else sorted(requested_tickers - cached_tickers))
 
     ticker_to_cik = _ticker_to_cik_map()
     fundamental_records = []
 
-    for ticker in tickers:
-        central_index_key = ticker_to_cik.get(ticker.upper())
+    for ticker in tickers_to_fetch:
+        central_index_key = ticker_to_cik.get(ticker)
         if central_index_key is None:
             continue  # ticker not found in SEC's list (e.g., a non-US or private name)
 
         company_facts = _get_json_from_sec(_SEC_COMPANY_FACTS_URL.format(cik=central_index_key))
         us_gaap_facts = company_facts.get("facts", {}).get("us-gaap", {})
 
-        for concept in concepts:
-            concept_facts = us_gaap_facts.get(concept)
-            if not concept_facts:
-                continue  # this company doesn't report this particular tag
-
+        # Every concept SEC reports for this ticker, not just `concepts` —
+        # see the docstring on why the cache stores the whole thing.
+        for concept, concept_facts in us_gaap_facts.items():
             # A concept reports values under one or more units (e.g. USD, USD/shares).
             for unit_name, reported_values in concept_facts.get("units", {}).items():
                 for reported_value in reported_values:
                     fundamental_records.append({
-                        "ticker": ticker.upper(),
+                        "ticker": ticker,
                         "concept": concept,
                         "unit": unit_name,
                         "period_start": reported_value.get("start"),   # None for instant concepts (e.g. Assets)
@@ -254,13 +289,27 @@ def fetch_fundamentals(tickers, concepts=None, start_date=None, end_date=None) -
 
         time.sleep(0.2)  # be polite to SEC's servers (well under their rate limit)
 
-    fundamentals = pd.DataFrame.from_records(fundamental_records)
-    if fundamentals.empty:
-        return fundamentals
+    new_frame = pd.DataFrame.from_records(fundamental_records, columns=_FUNDAMENTALS_COLUMNS)
+    if tickers_to_fetch:
+        # Drop the old cached rows for every ticker we just re-fetched (a
+        # freshly-filed value should fully replace what was cached before,
+        # not sit alongside it) before adding the new results back in.
+        cached = cached[~cached["ticker"].isin(tickers_to_fetch)] if not cached.empty else cached
+        frames_to_combine = [frame for frame in (cached, new_frame) if not frame.empty]
+        combined = pd.concat(frames_to_combine, ignore_index=True) if frames_to_combine else new_frame
+        cache_path.parent.mkdir(parents=True, exist_ok=True)
+        combined.to_parquet(cache_path, index=False)
+    else:
+        combined = cached
 
-    fundamentals["period_start"] = pd.to_datetime(fundamentals["period_start"])
-    fundamentals["period_end"] = pd.to_datetime(fundamentals["period_end"])
-    fundamentals["filed_date"] = pd.to_datetime(fundamentals["filed_date"])
+    if combined.empty:
+        return combined
+
+    combined["period_start"] = pd.to_datetime(combined["period_start"])
+    combined["period_end"] = pd.to_datetime(combined["period_end"])
+    combined["filed_date"] = pd.to_datetime(combined["filed_date"])
+
+    fundamentals = combined[combined["ticker"].isin(requested_tickers) & combined["concept"].isin(concepts)]
     if start_date is not None:
         fundamentals = fundamentals[fundamentals["filed_date"] >= pd.to_datetime(start_date)]
     if end_date is not None:
