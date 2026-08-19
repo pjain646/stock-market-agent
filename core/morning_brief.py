@@ -18,11 +18,15 @@ control):
      `select_brief_tickers` picks the day's movers plus one name per industry
      not already covered, then reuses `live_sentiment.fetch_headlines`.
 
-One LLM call (`_synthesize`) turns all three into brief prose. It authenticates
-via whatever the environment provides — a locally logged-in Claude Code
-session, or `CLAUDE_CODE_OAUTH_TOKEN` in CI — and never touches
-ANTHROPIC_API_KEY, so it draws from subscription usage, not metered billing
-(Preyansh's explicit call: no metered spend on the unattended daily cron).
+One LLM call (`_synthesize`) turns all three into brief prose, and also picks
+the most material headlines by id (`top_articles`) out of everything fetched —
+`_index_headlines`/`synthesize_brief` resolve those ids back to their ORIGINAL
+Finnhub records, so a linked article's url can never be something the LLM
+invented. It authenticates via whatever the environment provides — a locally
+logged-in Claude Code session, or `CLAUDE_CODE_OAUTH_TOKEN` in CI — and never
+touches ANTHROPIC_API_KEY, so it draws from subscription usage, not metered
+billing (Preyansh's explicit call: no metered spend on the unattended daily
+cron).
 """
 from __future__ import annotations
 
@@ -143,8 +147,9 @@ async def _synthesize(payload: str) -> tuple[dict, float | None]:
         "NOT predicting returns, NOT recommending trades, and NOT scoring any "
         "stock — a separate statistical model already does that elsewhere and "
         "you must not influence it. Just report what's happening, factually.\n"
-        "Given raw macro headlines, computed market-internals numbers, and raw "
-        "per-ticker headlines, write:\n"
+        "Given raw macro headlines and raw per-ticker headlines, each prefixed "
+        "with a bracketed id like [17], plus computed market-internals numbers, "
+        "write:\n"
         "  - `macro`: 2-4 sentences on overnight macro/world news that could "
         "move markets today.\n"
         "  - `internals`: 1-2 sentences on today's market internals (movers, "
@@ -152,8 +157,13 @@ async def _synthesize(payload: str) -> tuple[dict, float | None]:
         "  - `tickers`: one short sentence per ticker naming the single most "
         "material headline, keyed by ticker symbol. Omit a ticker entirely if "
         "it has no material news rather than inventing filler.\n"
+        "  - `top_articles`: an array of the bracketed ids (integers) of the "
+        "most material headlines across BOTH the macro and per-ticker "
+        "sections combined, ranked most-material first. Pick as many as "
+        "genuinely matter — up to 15 — but fewer if fewer are truly "
+        "material; never pad to hit a count.\n"
         "Reply with ONLY a JSON object with keys `macro`, `internals`, "
-        "`tickers`. No prose, no code fence."
+        "`tickers`, `top_articles`. No prose, no code fence."
     )
     fragments: list[str] = []
     cost: float | None = None
@@ -177,16 +187,62 @@ async def _synthesize(payload: str) -> tuple[dict, float | None]:
         return {}, cost
 
 
+def _index_headlines(market_news: pd.DataFrame,
+                     ticker_headlines: dict[str, pd.DataFrame]
+                     ) -> tuple[str | None, list[str], dict[int, dict]]:
+    """Assign each raw headline a stable integer id so the synthesis LLM can
+    point at "which headlines matter" by id (`[17]`) instead of retyping a
+    url. Ids are resolved back to the ORIGINAL fetched record afterward —
+    the actual url/source/datetime an "article" carries downstream always
+    comes straight from Finnhub, never from the LLM, so a hallucinated or
+    mangled link can't reach the dashboard.
+
+    Returns (macro_section_text_or_None, [per-ticker section texts], id_map).
+    """
+    id_map: dict[int, dict] = {}
+    next_id = 1
+
+    macro_section = None
+    if not market_news.empty:
+        lines = []
+        for row in market_news.itertuples():
+            id_map[next_id] = {
+                "ticker": None, "headline": row.headline, "source": row.source,
+                "url": row.url, "datetime": row.datetime.isoformat(),
+            }
+            lines.append(f"[{next_id}] {row.datetime:%Y-%m-%d %H:%M} | {row.headline}")
+            next_id += 1
+        macro_section = "=== MACRO/MARKET HEADLINES ===\n" + "\n".join(lines)
+
+    ticker_sections = []
+    for ticker, headlines in ticker_headlines.items():
+        if headlines.empty:
+            continue
+        lines = []
+        for row in headlines.itertuples():
+            id_map[next_id] = {
+                "ticker": ticker, "headline": row.headline, "source": row.source,
+                "url": row.url, "datetime": row.datetime.isoformat(),
+            }
+            lines.append(f"[{next_id}] {row.datetime:%Y-%m-%d} | {row.headline}")
+            next_id += 1
+        ticker_sections.append(f"=== {ticker} HEADLINES ===\n" + "\n".join(lines))
+
+    return macro_section, ticker_sections, id_map
+
+
 def synthesize_brief(market_news: pd.DataFrame, internals: dict,
-                     ticker_headlines: dict[str, pd.DataFrame]) -> tuple[dict, float]:
-    """Assemble the raw-data payload for the one synthesis LLM call, run it."""
+                     ticker_headlines: dict[str, pd.DataFrame]
+                     ) -> tuple[dict, float, list[dict]]:
+    """Assemble the raw-data payload for the one synthesis LLM call, run it,
+    and resolve the LLM's selected article ids back to their real records."""
     import asyncio
 
+    macro_section, ticker_sections, id_map = _index_headlines(market_news, ticker_headlines)
+
     sections = []
-    if not market_news.empty:
-        lines = [f"{row.datetime:%Y-%m-%d %H:%M} | {row.headline}"
-                for row in market_news.itertuples()]
-        sections.append("=== MACRO/MARKET HEADLINES ===\n" + "\n".join(lines))
+    if macro_section:
+        sections.append(macro_section)
 
     gainers = ", ".join(f"{m['ticker']} {m['pct_change']:+.1%}" for m in internals["gainers"][:10])
     losers = ", ".join(f"{m['ticker']} {m['pct_change']:+.1%}" for m in internals["losers"][:10])
@@ -195,19 +251,27 @@ def synthesize_brief(market_news: pd.DataFrame, internals: dict,
         "=== MARKET INTERNALS (computed, not narrated — use as-is, don't invent numbers) ===\n"
         f"Top gainers: {gainers}\nTop losers: {losers}\nBy industry: {industries}"
     )
-
-    for ticker, headlines in ticker_headlines.items():
-        if headlines.empty:
-            continue
-        lines = [f"{row.datetime:%Y-%m-%d} | {row.headline}" for row in headlines.itertuples()]
-        sections.append(f"=== {ticker} HEADLINES ===\n" + "\n".join(lines))
+    sections.extend(ticker_sections)
 
     payload = "\n\n".join(sections)
     if not payload.strip():
-        return {"macro": "", "internals": "", "tickers": {}}, 0.0
+        return {"macro": "", "internals": "", "tickers": {}}, 0.0, []
 
-    brief, cost = asyncio.run(_synthesize(payload))
-    return brief, cost or 0.0
+    narrative, cost = asyncio.run(_synthesize(payload))
+
+    raw_ids = narrative.get("top_articles", []) if isinstance(narrative, dict) else []
+    articles: list[dict] = []
+    seen_ids: set[int] = set()
+    for raw_id in raw_ids if isinstance(raw_ids, list) else []:
+        try:
+            article_id = int(raw_id)
+        except (TypeError, ValueError):
+            continue
+        if article_id in id_map and article_id not in seen_ids:
+            seen_ids.add(article_id)
+            articles.append(id_map[article_id])
+
+    return narrative, cost or 0.0, articles
 
 
 def build_morning_brief(panel: pd.DataFrame, as_of=None) -> tuple[dict, float]:
@@ -225,7 +289,7 @@ def build_morning_brief(panel: pd.DataFrame, as_of=None) -> tuple[dict, float]:
     brief_tickers = select_brief_tickers(internals, industry_map)
     ticker_headlines = fetch_ticker_briefs(brief_tickers, as_of=as_of)
 
-    narrative, cost = synthesize_brief(market_news, internals, ticker_headlines)
+    narrative, cost, articles = synthesize_brief(market_news, internals, ticker_headlines)
 
     as_of_str = (pd.Timestamp(as_of) if as_of else pd.Timestamp.today()).strftime("%Y-%m-%d")
     # The LLM is only asked (via the system prompt), never forced, to shape
@@ -243,6 +307,7 @@ def build_morning_brief(panel: pd.DataFrame, as_of=None) -> tuple[dict, float]:
         "losers": internals["losers"],
         "industry_moves": internals["industry_moves"],
         "ticker_notes": ticker_notes,
+        "articles": articles,
     }, cost
 
 
