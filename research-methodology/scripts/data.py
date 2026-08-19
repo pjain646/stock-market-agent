@@ -13,9 +13,11 @@ Honesty rules are enforced here in code, not left to the caller to remember:
     yet known — the point-in-time rule, in code.
 
 Functions:
-  fetch_prices             -- adjusted daily closes (yfinance)
-  fetch_prices_incremental -- fetch_prices, backed by a growing on-disk cache
-  fetch_fundamentals       -- point-in-time financial-statement line items (SEC EDGAR)
+  fetch_prices              -- adjusted daily closes (yfinance)
+  fetch_prices_incremental  -- fetch_prices, backed by a growing on-disk cache
+  fetch_fundamentals        -- point-in-time financial-statement line items (SEC EDGAR)
+  fetch_insider_transactions -- Form 4 insider buys/sells, cached by filing
+                                accession number (SEC EDGAR)
 """
 from __future__ import annotations
 
@@ -643,15 +645,39 @@ def _strip_xml_namespaces(xml_root):
     return xml_root
 
 
-def fetch_insider_transactions(tickers, max_form4_filings_per_ticker: int = 40) -> pd.DataFrame:
+# Project-relative, not ~/.cache like the other fetchers: this cache needs to
+# survive across GitHub Actions runs (each one a fresh checkout with no local
+# disk to persist to), same reasoning as PRICE_CACHE_PATH in research_pipeline.py.
+# Resolved against the CURRENT WORKING DIRECTORY at call time, so it lands in
+# the real project's committed candidates/ dir as long as the caller (research
+# or live) runs from the project root, which both already do.
+_INSIDER_TRANSACTIONS_CACHE_PATH = pathlib.Path("candidates") / "insider_transactions_cache.parquet"
+_INSIDER_TRANSACTIONS_COLUMNS = [
+    "ticker", "accession_number", "filing_date", "insider_name", "is_director",
+    "is_officer", "officer_title", "transaction_date", "transaction_code",
+    "acquired_or_disposed", "shares", "price_per_share",
+]
+
+
+def fetch_insider_transactions(tickers, max_form4_filings_per_ticker: int = 40,
+                               cache_path: pathlib.Path = _INSIDER_TRANSACTIONS_CACHE_PATH) -> pd.DataFrame:
     """Insider buys/sells (SEC Form 4) — what a company's own officers/directors trade.
 
     This is data the base model has no access to, and it's genuinely point-in-time:
     Form 4 must be filed within ~2 business days of the trade, so the filing date
     is when the information became public.
 
-    How it works: look up the company's recent filings, keep the Form 4s, fetch
-    each one's XML, and parse the actual share transactions out of it.
+    How it works: look up the company's recent filings, keep the Form 4s NOT
+    already in the cache (each filing's accession number is a permanent,
+    unique ID — once fetched and parsed, a filing's content never changes, so
+    it never needs re-fetching), fetch each new one's XML, and parse the
+    actual share transactions out of it.
+
+    Unlike prices, this genuinely doesn't need a periodic full refresh: SEC
+    filings aren't retroactively revised the way yfinance's adjusted closes
+    are. The only per-call cost that's unavoidable is checking each ticker's
+    filing LIST for anything new — cheap compared to fetching and parsing
+    filing documents, which is what actually took most of the time before.
 
     Returns a long DataFrame:
         [ticker, filing_date, insider_name, is_director, is_officer, officer_title,
@@ -665,20 +691,29 @@ def fetch_insider_transactions(tickers, max_form4_filings_per_ticker: int = 40) 
     if isinstance(tickers, str):
         tickers = [tickers]
     ticker_to_cik = _ticker_to_cik_map()
-    insider_records = []
 
+    cached = (pd.read_parquet(cache_path) if cache_path.exists()
+             else pd.DataFrame(columns=_INSIDER_TRANSACTIONS_COLUMNS))
+    cached_accessions_by_ticker = ({} if cached.empty else
+        {ticker_key: set(group["accession_number"]) for ticker_key, group in cached.groupby("ticker")})
+
+    new_records = []
     for ticker in tickers:
         central_index_key = ticker_to_cik.get(ticker.upper())
         if central_index_key is None:
             continue
 
-        # The submissions endpoint lists a company's recent filings as parallel arrays.
+        # The submissions endpoint lists a company's recent filings as parallel
+        # arrays — always fetched fresh: this is the only way to learn whether
+        # a NEW Form 4 landed since last time.
         submissions = _get_json_from_sec(_SEC_SUBMISSIONS_URL.format(cik=central_index_key))
         recent_filings = submissions.get("filings", {}).get("recent", {})
         form_types = recent_filings.get("form", [])
         accession_numbers = recent_filings.get("accessionNumber", [])
         primary_documents = recent_filings.get("primaryDocument", [])
         filing_dates = recent_filings.get("filingDate", [])
+
+        already_fetched = cached_accessions_by_ticker.get(ticker.upper(), set())
 
         form4_seen = 0
         for form_type, accession_number, primary_document, filing_date in zip(
@@ -689,6 +724,9 @@ def fetch_insider_transactions(tickers, max_form4_filings_per_ticker: int = 40) 
             if form4_seen >= max_form4_filings_per_ticker:
                 break
             form4_seen += 1
+
+            if accession_number in already_fetched:
+                continue  # this exact filing's content is already cached — nothing to redo
 
             # primaryDocument often points to the styled HTML view in an "xsl.../"
             # subfolder; the raw, parseable XML is the same filename at the accession
@@ -715,8 +753,9 @@ def fetch_insider_transactions(tickers, max_form4_filings_per_ticker: int = 40) 
 
             # Non-derivative transactions are the actual common-share buys/sells.
             for transaction in ownership_document.findall(".//nonDerivativeTransaction"):
-                insider_records.append({
+                new_records.append({
                     "ticker": ticker.upper(),
+                    "accession_number": accession_number,
                     "filing_date": filing_date,
                     "insider_name": insider_name,
                     "is_director": is_director in ("1", "true"),
@@ -734,20 +773,25 @@ def fetch_insider_transactions(tickers, max_form4_filings_per_ticker: int = 40) 
                 })
             time.sleep(0.12)  # stay well under SEC's rate limit
 
-    insider_transactions = pd.DataFrame.from_records(insider_records)
-    if insider_transactions.empty:
-        return insider_transactions
+    new_frame = pd.DataFrame.from_records(new_records, columns=_INSIDER_TRANSACTIONS_COLUMNS)
+    frames_to_combine = [frame for frame in (cached, new_frame) if not frame.empty]
+    combined = pd.concat(frames_to_combine, ignore_index=True) if frames_to_combine else cached
 
-    # Make dates and numbers real types instead of strings.
-    insider_transactions["filing_date"] = pd.to_datetime(insider_transactions["filing_date"])
-    insider_transactions["transaction_date"] = pd.to_datetime(
-        insider_transactions["transaction_date"], errors="coerce"
-    )
-    for numeric_column in ("shares", "price_per_share"):
-        insider_transactions[numeric_column] = pd.to_numeric(
-            insider_transactions[numeric_column], errors="coerce"
-        )
-    return insider_transactions.sort_values(["ticker", "transaction_date"]).reset_index(drop=True)
+    if not combined.empty:
+        # Make dates and numbers real types instead of strings (idempotent —
+        # cached rows are already typed correctly from the last save).
+        combined["filing_date"] = pd.to_datetime(combined["filing_date"])
+        combined["transaction_date"] = pd.to_datetime(combined["transaction_date"], errors="coerce")
+        for numeric_column in ("shares", "price_per_share"):
+            combined[numeric_column] = pd.to_numeric(combined[numeric_column], errors="coerce")
+        combined = combined.sort_values(["ticker", "transaction_date"]).reset_index(drop=True)
+
+    if new_records:
+        cache_path.parent.mkdir(parents=True, exist_ok=True)
+        combined.to_parquet(cache_path, index=False)
+
+    requested_tickers = {t.upper() for t in tickers}
+    return combined[combined["ticker"].isin(requested_tickers)].reset_index(drop=True)
 
 
 def fetch_institutional_holdings_13f(tickers):  # pragma: no cover - scaffold
