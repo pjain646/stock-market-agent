@@ -148,10 +148,12 @@ async def _synthesize(payload: str) -> tuple[dict, float | None]:
         "stock — a separate statistical model already does that elsewhere and "
         "you must not influence it. Just report what's happening, factually.\n"
         "Given raw macro headlines and raw per-ticker headlines, each prefixed "
-        "with a bracketed id like [17], plus computed market-internals numbers, "
-        "write:\n"
-        "  - `macro`: 2-4 sentences on overnight macro/world news that could "
-        "move markets today.\n"
+        "with a bracketed id and source like [17](Reuters), plus computed "
+        "market-internals numbers, write:\n"
+        "  - `macro_bullets`: 3-5 short, single-sentence bullets, each a "
+        "DISTINCT overnight macro/world theme that could move markets today — "
+        "not a paragraph, not multiple sentences per bullet. Fewer than 3 if "
+        "fewer distinct themes are genuinely there.\n"
         "  - `internals`: 1-2 sentences on today's market internals (movers, "
         "sector rotation) using the numbers given — don't invent numbers.\n"
         "  - `tickers`: one short sentence per ticker naming the single most "
@@ -160,9 +162,14 @@ async def _synthesize(payload: str) -> tuple[dict, float | None]:
         "  - `top_articles`: an array of the bracketed ids (integers) of the "
         "most material headlines across BOTH the macro and per-ticker "
         "sections combined, ranked most-material first. Pick as many as "
-        "genuinely matter — up to 15 — but fewer if fewer are truly "
-        "material; never pad to hit a count.\n"
-        "Reply with ONLY a JSON object with keys `macro`, `internals`, "
+        "genuinely matter — up to 18 — but fewer if fewer are truly "
+        "material; never pad to hit a count. SKIP any headline whose source "
+        "is Reuters — it requires a paid subscription to read, so it must "
+        "never be picked here even if it's the most material story; choose "
+        "the next-best non-Reuters headline covering that story instead. "
+        "Reuters headlines are still fair game for `macro_bullets`/`internals`/"
+        "`tickers` prose above, just never as a `top_articles` id.\n"
+        "Reply with ONLY a JSON object with keys `macro_bullets`, `internals`, "
         "`tickers`, `top_articles`. No prose, no code fence."
     )
     fragments: list[str] = []
@@ -210,7 +217,7 @@ def _index_headlines(market_news: pd.DataFrame,
                 "ticker": None, "headline": row.headline, "source": row.source,
                 "url": row.url, "datetime": row.datetime.isoformat(),
             }
-            lines.append(f"[{next_id}] {row.datetime:%Y-%m-%d %H:%M} | {row.headline}")
+            lines.append(f"[{next_id}]({row.source}) {row.datetime:%Y-%m-%d %H:%M} | {row.headline}")
             next_id += 1
         macro_section = "=== MACRO/MARKET HEADLINES ===\n" + "\n".join(lines)
 
@@ -224,7 +231,7 @@ def _index_headlines(market_news: pd.DataFrame,
                 "ticker": ticker, "headline": row.headline, "source": row.source,
                 "url": row.url, "datetime": row.datetime.isoformat(),
             }
-            lines.append(f"[{next_id}] {row.datetime:%Y-%m-%d} | {row.headline}")
+            lines.append(f"[{next_id}]({row.source}) {row.datetime:%Y-%m-%d} | {row.headline}")
             next_id += 1
         ticker_sections.append(f"=== {ticker} HEADLINES ===\n" + "\n".join(lines))
 
@@ -255,7 +262,7 @@ def synthesize_brief(market_news: pd.DataFrame, internals: dict,
 
     payload = "\n\n".join(sections)
     if not payload.strip():
-        return {"macro": "", "internals": "", "tickers": {}}, 0.0, []
+        return {"macro_bullets": [], "internals": "", "tickers": {}}, 0.0, []
 
     narrative, cost = asyncio.run(_synthesize(payload))
 
@@ -267,11 +274,19 @@ def synthesize_brief(market_news: pd.DataFrame, internals: dict,
             article_id = int(raw_id)
         except (TypeError, ValueError):
             continue
-        if article_id in id_map and article_id not in seen_ids:
-            seen_ids.add(article_id)
-            articles.append(id_map[article_id])
+        if article_id not in id_map or article_id in seen_ids:
+            continue
+        record = id_map[article_id]
+        # Reuters requires a paid subscription to read — never surface it as
+        # a clickable link, even though its headlines still inform the prose
+        # above. Enforced here too, not just via the system prompt, since a
+        # prompt is a request, not a guarantee.
+        if "reuters" in (record.get("source") or "").lower():
+            continue
+        seen_ids.add(article_id)
+        articles.append(record)
 
-    return narrative, cost or 0.0, articles
+    return narrative, cost or 0.0, articles[:15]
 
 
 def build_morning_brief(panel: pd.DataFrame, as_of=None) -> tuple[dict, float]:
@@ -299,9 +314,13 @@ def build_morning_brief(panel: pd.DataFrame, as_of=None) -> tuple[dict, float]:
     ticker_notes = narrative.get("tickers", {})
     if not isinstance(ticker_notes, dict):
         ticker_notes = {}
+    macro_bullets = narrative.get("macro_bullets", [])
+    if not isinstance(macro_bullets, list):
+        macro_bullets = []
+    macro_bullets = [b.strip() for b in macro_bullets if isinstance(b, str) and b.strip()]
     return {
         "as_of": as_of_str,
-        "macro": narrative.get("macro", ""),
+        "macro_bullets": macro_bullets,
         "internals_narrative": narrative.get("internals", ""),
         "gainers": internals["gainers"],
         "losers": internals["losers"],

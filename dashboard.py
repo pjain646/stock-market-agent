@@ -112,20 +112,29 @@ h2, h3 {{ font-weight: 600 !important; letter-spacing: -0.02em; }}
 [data-testid="stDataFrame"] {{
     border: 1px solid {ZINC["200"]}; border-radius: 16px; box-shadow: {SHADOW};
 }}
-/* tab-like nav — st.pills backed by session_state, see comment at call site */
-[data-testid="stPills"] {{
+/* tab-like nav — st.pills backed by session_state, see comment at call site.
+   Streamlit renders this as a [data-testid="stButtonGroup"] of
+   button[data-variant="pills"] radios (aria-checked marks the active one) —
+   not the stPills/stBaseButton-pills testids older Streamlit versions used. */
+[data-testid="stButtonGroup"] {{
     gap: .25rem; background: {ZINC["100"]}; padding: .3rem; border-radius: 12px;
     width: fit-content; margin-bottom: .75rem;
 }}
-[data-testid="stPills"] [data-testid="stBaseButton-pills"] {{
+[data-testid="stButtonGroup"] button[data-variant="pills"] {{
     border-radius: 9px !important; padding: .35rem .95rem !important;
     font-weight: 500 !important; font-size: .85rem !important; border: none !important;
     background: transparent !important; color: {ZINC["500"]} !important; box-shadow: none !important;
 }}
-[data-testid="stPills"] [data-testid="stBaseButton-pillsActive"] {{
+[data-testid="stButtonGroup"] button[data-variant="pills"][aria-checked="true"] {{
     background: {ACCENT_SOFT} !important; box-shadow: inset 0 0 0 1px {ACCENT_BORDER_SOFT} !important;
     color: {ACCENT} !important; font-weight: 600 !important;
 }}
+/* the product is Stock predictions + Morning brief — the first two pills;
+   everything after is secondary research detail. A divider after pill 2
+   marks that split without needing a second nav widget. */
+[data-testid="stButtonGroup"] button[data-variant="pills"]:nth-of-type(2) {{
+    margin-right: .55rem !important; padding-right: .95rem !important;
+    border-right: 1px solid {ZINC["300"]} !important;
 .stDownloadButton button, .stButton button {{
     border-radius: 10px; border: 1px solid {ZINC["300"]}; font-weight: 500;
     box-shadow: 0 1px 2px rgba(0,0,0,.2);
@@ -433,15 +442,39 @@ def _time_ago(iso_datetime: str) -> str:
     return f"{hours / 24:.0f}d ago"
 
 
-def render_articles(articles: list[dict]) -> str:
-    """Morning-brief "top stories": real, clickable links straight from the
-    fetched news records (never LLM-authored) — see
-    `core/morning_brief.py`'s `_index_headlines`/`synthesize_brief` for how
-    the LLM's article picks get resolved back to their original url/source."""
+def render_macro_bullets(bullets: list[str]) -> str:
+    """Morning-brief macro summary as short scannable bullets instead of a
+    dense paragraph — each bullet is one distinct theme (see the
+    `macro_bullets` prompt in `core/morning_brief.py`)."""
+    icon_html = ('<span class="material-symbols-rounded" style="font-size:1rem; '
+                 'vertical-align:-3px; margin-right:.35rem; opacity:.75;">public</span>')
+    items = "".join(
+        '<div style="display:flex; gap:.55rem; align-items:flex-start; padding:.35rem 0;">'
+        f'<span style="flex-shrink:0; margin-top:.55rem; width:5px; height:5px; '
+        f'border-radius:50%; background:{ACCENT};"></span>'
+        f'<span style="font-size:.92rem; line-height:1.5; color:{ZINC["700"]};">'
+        f'{html.escape(bullet)}</span></div>'
+        for bullet in bullets
+    )
+    return (f'<div class="sc-card"><div class="sc-label">{icon_html}Macro / world</div>{items}</div>')
+
+
+def render_story_group(articles: list[dict], moves: dict[str, float] | None = None) -> str:
+    """One card of linked headlines — real urls/sources straight from the
+    fetched news records (never LLM-authored), see `core/morning_brief.py`'s
+    `_index_headlines`/`synthesize_brief` for how the LLM's article picks get
+    resolved back to their original url/source. A ticker-tagged story shows
+    its day's price move (from `moves`) right on the badge, colored the same
+    way the rest of the dashboard marks gains vs. losses."""
     rows = []
     for article in articles:
         ticker = article.get("ticker")
-        tag = badge(ticker, "solid") if ticker else badge("MACRO", "muted")
+        if ticker:
+            pct = moves.get(ticker) if moves else None
+            label = f"{ticker} {pct:+.1%}" if pct is not None else ticker
+            tag = badge(label, "solid" if (pct is None or pct >= 0) else "outline")
+        else:
+            tag = badge("MACRO", "muted")
         headline = html.escape(str(article.get("headline", "")))
         url = html.escape(str(article.get("url", "")), quote=True)
         source = html.escape(str(article.get("source", "")))
@@ -456,7 +489,7 @@ def render_articles(articles: list[dict]) -> str:
             f'border-bottom:1px solid {ZINC["200"]};">'
             f'<div style="flex-shrink:0; padding-top:.15rem;">{tag}</div>'
             '<div style="flex:1; min-width:0;">'
-            f'<div style="font-size:.92rem; line-height:1.4;">{headline_html}</div>'
+            f'<div style="font-size:.88rem; line-height:1.4;">{headline_html}</div>'
             f'<div class="sc-sub" style="margin-top:.15rem;">{meta}</div>'
             "</div></div>"
         )
@@ -612,7 +645,12 @@ st.markdown("<div style='height:.75rem'></div>", unsafe_allow_html=True)
 # widget elsewhere on the page (e.g. the iteration selectors below) — any
 # interaction resets it to tab 0. st.pills backed by session_state does
 # persist, so it's used here as tab-like nav instead.
-TAB_NAMES = ["Signals", "Signal library", "Stock predictions", "Morning brief",
+# Stock predictions + Morning brief ARE the product; everything else
+# (Signals, Signal library, Experiment detail, Research debate, Holdout
+# verdicts, Metrics) is research/audit detail for when Preyansh wants to dig
+# in — hence leading with the first two, defaulting to the first, and the
+# nth-of-type(2) CSS divider above that visually splits the pill row there.
+TAB_NAMES = ["Stock predictions", "Morning brief", "Signals", "Signal library",
              "Experiment detail", "Research debate", "Holdout verdicts", "Metrics"]
 active_tab = st.pills("Navigation", TAB_NAMES, default=TAB_NAMES[0],
                       key="active_tab", label_visibility="collapsed")
@@ -806,30 +844,55 @@ if active_tab == "Morning brief":
         st.markdown(f'<p style="color:{ZINC["500"]}; font-size:.85rem;">As of {as_of} '
                     f'{freshness_indicator(as_of)}</p>', unsafe_allow_html=True)
 
-        macro_text = brief.get("macro", "").strip()
-        st.markdown(
-            card("Macro / world", macro_text or "No macro news synthesized for this run.",
-                wrap=True, icon="public"),
-            unsafe_allow_html=True)
+        # `macro_bullets` (short, one-theme-per-line) replaced the old single
+        # paragraph — a stale cached brief on disk may still carry the
+        # legacy `macro` string, so fall back to showing that as one bullet
+        # rather than showing nothing.
+        macro_bullets = brief.get("macro_bullets")
+        if not isinstance(macro_bullets, list) or not macro_bullets:
+            legacy_macro = brief.get("macro", "")
+            macro_bullets = [legacy_macro.strip()] if isinstance(legacy_macro, str) and legacy_macro.strip() else []
+        if macro_bullets:
+            st.markdown(render_macro_bullets(macro_bullets), unsafe_allow_html=True)
+
+        gainers, losers = brief.get("gainers", []), brief.get("losers", [])
+        moves = {m["ticker"]: m["pct_change"] for m in [*gainers, *losers] if "ticker" in m}
 
         articles = brief.get("articles", [])
         if not isinstance(articles, list):
             articles = []
-        if articles:
+        macro_articles = [a for a in articles if not a.get("ticker")]
+        ticker_articles = [a for a in articles if a.get("ticker")]
+        if macro_articles or ticker_articles:
             st.markdown('<div class="sc-label" style="margin-top:1.4rem">Top stories</div>',
                         unsafe_allow_html=True)
-            st.markdown(render_articles(articles), unsafe_allow_html=True)
+            story_columns = st.columns(2)
+            with story_columns[0]:
+                st.markdown('<div class="sc-sub" style="margin-bottom:.4rem;">World &amp; macro</div>',
+                            unsafe_allow_html=True)
+                if macro_articles:
+                    st.markdown(render_story_group(macro_articles), unsafe_allow_html=True)
+                else:
+                    st.markdown(f'<p style="color:{ZINC["500"]}; font-size:.82rem;">'
+                                f'No macro stories today.</p>', unsafe_allow_html=True)
+            with story_columns[1]:
+                st.markdown('<div class="sc-sub" style="margin-bottom:.4rem;">Ticker moves</div>',
+                            unsafe_allow_html=True)
+                if ticker_articles:
+                    st.markdown(render_story_group(ticker_articles, moves), unsafe_allow_html=True)
+                else:
+                    st.markdown(f'<p style="color:{ZINC["500"]}; font-size:.82rem;">'
+                                f'No ticker-specific stories today.</p>', unsafe_allow_html=True)
 
-        internals_text = brief.get("internals_narrative", "").strip()
-        if internals_text:
-            st.markdown(
-                f'<p style="color:{ZINC["700"]}; font-size:.9rem; margin-top:1rem;">{internals_text}</p>',
-                unsafe_allow_html=True)
-
-        gainers, losers = brief.get("gainers", []), brief.get("losers", [])
         if gainers or losers:
             st.markdown('<div class="sc-label" style="margin-top:1.4rem">Market internals</div>',
                         unsafe_allow_html=True)
+            internals_text = brief.get("internals_narrative", "").strip()
+            if internals_text:
+                st.markdown(
+                    f'<p style="color:{ZINC["500"]}; font-size:.82rem; margin:-.2rem 0 .6rem;">'
+                    f'{internals_text}</p>',
+                    unsafe_allow_html=True)
             movers_columns = st.columns(2)
             if gainers:
                 gainers_table = pd.DataFrame(gainers)[["ticker", "industry", "pct_change"]]
@@ -859,20 +922,6 @@ if active_tab == "Morning brief":
                 tooltip=["industry", "pct_change"],
             ).properties(height=280)
             st.altair_chart(industry_chart, use_container_width=True)
-
-        # .get() only checks the key exists, not its type — a hand-edited or
-        # older-format morning_brief.json could carry a non-dict value here,
-        # and ticker_notes.items() below would crash the whole tab.
-        ticker_notes = brief.get("ticker_notes", {})
-        if not isinstance(ticker_notes, dict):
-            ticker_notes = {}
-        if ticker_notes:
-            st.markdown('<div class="sc-label" style="margin-top:1.4rem">Ticker notes</div>',
-                        unsafe_allow_html=True)
-            notes_table = pd.DataFrame(
-                [{"Ticker": ticker, "Note": note} for ticker, note in ticker_notes.items()]
-            )
-            st.dataframe(notes_table, use_container_width=True, hide_index=True)
     else:
         st.markdown('<div class="sc-label">This morning</div>', unsafe_allow_html=True)
         st.markdown(
