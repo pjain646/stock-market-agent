@@ -42,6 +42,19 @@ UNIVERSE = {
                    "AVB", "EQR"],
 }
 
+# Preyansh's personal watch list for the morning brief (core/morning_brief.py)
+# — separate from UNIVERSE above, which is the prediction model's training/
+# ranking universe. These are guaranteed news coverage every morning (not
+# competitively curated against everything else), and are excluded from the
+# brief's general "Top stories" section so that section stays about names
+# NOT already being watched. Edit this list directly to add/remove tickers.
+WATCHLIST_BENCHMARKS = ["SPY", "VGT", "QQQ"]  # shown first, as market context
+WATCHLIST_TICKERS = [
+    "AAPL", "MSFT", "NVDA", "TSLA", "AMZN", "GOOGL",   # mega-cap tech
+    "MU", "SNDK", "DRAM",                              # memory/DRAM
+    "USAR", "IREN", "OUST", "AMD", "RKLB", "PLTR", "MRVL",
+]
+
 START = "2014-01-01"
 END = "2024-12-31"
 

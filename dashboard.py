@@ -29,7 +29,7 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 
-from core import monetary_metric
+from core import config, monetary_metric
 
 PROJECT_ROOT = pathlib.Path(__file__).resolve().parent
 JOURNAL_DB = PROJECT_ROOT / "journal.db"
@@ -498,6 +498,62 @@ def render_story_group(articles: list[dict], moves: dict[str, float] | None = No
     return f'<div class="sc-card">{"".join(rows)}</div>'
 
 
+def render_watchlist(tickers: list[str], articles_by_ticker: dict[str, list[dict]],
+                     prices: dict[str, dict] | None = None, dark: bool = False) -> str:
+    """Grid of watch-list ticker cards: opening price (only once fetched via
+    the on-demand refresh button — see the "Refresh opening prices" button
+    at the call site, since the daily pipeline runs pre-market and can't
+    know today's open at generation time) plus that ticker's guaranteed news
+    (`core/morning_brief.py`'s `build_watchlist_articles`, never LLM-rationed
+    the way the general Top stories feed is)."""
+    prices = prices or {}
+    cards = []
+    for ticker in tickers:
+        price_info = prices.get(ticker)
+        if price_info:
+            price_html = (f'<span class="sc-value" style="font-size:1.05rem;">'
+                          f'${price_info["open"]:.2f}</span>'
+                          f'<div class="sc-sub" style="margin-top:0;">'
+                          f'{"today\'s open" if price_info["is_today"] else "open " + price_info["date"]}'
+                          f'</div>')
+        else:
+            price_html = f'<span class="sc-sub">Click refresh for today\'s open</span>'
+
+        headline_rows = []
+        for article in articles_by_ticker.get(ticker, []):
+            headline = html.escape(str(article.get("headline", "")))
+            url = html.escape(str(article.get("url", "")), quote=True)
+            when = _time_ago(article.get("datetime", ""))
+            source = html.escape(str(article.get("source", "")))
+            meta = " · ".join(part for part in [source, when] if part)
+            headline_html = (
+                f'<a href="{url}" target="_blank" rel="noopener noreferrer" '
+                f'style="color:{ZINC["700"]}; text-decoration:none;">{headline}</a>'
+            ) if url else headline
+            headline_rows.append(
+                f'<div style="font-size:.78rem; line-height:1.4; margin-top:.4rem;">'
+                f'{headline_html}<div style="color:{ZINC["500"]}; font-size:.72rem; '
+                f'margin-top:.1rem;">{meta}</div></div>'
+            )
+        news_html = "".join(headline_rows) or (
+            f'<div style="font-size:.78rem; color:{ZINC["500"]}; margin-top:.4rem;">'
+            "No recent headlines.</div>"
+        )
+
+        css_class = "sc-card-dark" if dark else "sc-card"
+        cards.append(
+            f'<div class="{css_class}" style="min-width:0;">'
+            f'<div style="display:flex; align-items:baseline; justify-content:space-between; gap:.5rem;">'
+            f'<span class="sc-label" style="margin-bottom:0;">{html.escape(ticker)}</span>'
+            f'</div>'
+            f'<div style="margin-top:.3rem;">{price_html}</div>'
+            f'{news_html}'
+            "</div>"
+        )
+    return (f'<div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(230px, 1fr)); '
+            f'gap:.75rem;">{"".join(cards)}</div>')
+
+
 def freshness_indicator(as_of_date) -> str:
     """Badge HTML for how stale a piece of daily-refreshed data is, derived
     purely from the data's own date vs. today's date — not from any live
@@ -843,6 +899,72 @@ if active_tab == "Morning brief":
         st.markdown('<div class="sc-label">This morning</div>', unsafe_allow_html=True)
         st.markdown(f'<p style="color:{ZINC["500"]}; font-size:.85rem;">As of {as_of} '
                     f'{freshness_indicator(as_of)}</p>', unsafe_allow_html=True)
+
+        # ------------------------------------------------------ watch list
+        # Preyansh's own tracked tickers — guaranteed news coverage (see
+        # core/morning_brief.py's build_watchlist_articles), shown first
+        # since this is the highest-priority content on the page. Price is
+        # deliberately NOT part of the daily-generated data: the pipeline
+        # runs pre-market (~7:30am Central), before today's open exists, so
+        # anything baked in at generation time would either be missing or
+        # silently stale (the same trap the Finnhub-freshness investigation
+        # surfaced earlier). Instead price is fetched live, on demand, only
+        # when this button is clicked — which is whenever Preyansh is
+        # actually looking, so the market may well be open by then.
+        st.markdown('<div class="sc-label" style="margin-top:.2rem">Watch list</div>',
+                    unsafe_allow_html=True)
+        button_col, caption_col = st.columns([1, 3])
+        if button_col.button("Refresh opening prices", key="refresh_watchlist_prices"):
+            with st.spinner("Fetching today's open ..."):
+                try:
+                    import yfinance as yf
+
+                    watch_tickers = list(dict.fromkeys(
+                        config.WATCHLIST_BENCHMARKS + config.WATCHLIST_TICKERS))
+                    raw_prices = yf.download(watch_tickers, period="5d", interval="1d",
+                                             auto_adjust=False, progress=False,
+                                             group_by="ticker")
+                    today_date = pd.Timestamp.today().normalize()
+                    fetched_prices = {}
+                    for ticker in watch_tickers:
+                        try:
+                            series = raw_prices[ticker].dropna(subset=["Open"])
+                            if series.empty:
+                                continue
+                            last_date = series.index[-1].normalize()
+                            fetched_prices[ticker] = {
+                                "open": float(series.iloc[-1]["Open"]),
+                                "date": last_date.strftime("%Y-%m-%d"),
+                                "is_today": last_date == today_date,
+                            }
+                        except (KeyError, IndexError):
+                            continue  # this one ticker had no data — skip, don't fail the rest
+                    st.session_state["watchlist_prices"] = fetched_prices
+                    st.session_state.pop("watchlist_prices_error", None)
+                except Exception as exc:  # network error, yfinance outage, etc.
+                    st.session_state["watchlist_prices_error"] = str(exc)
+        caption_col.markdown(
+            f'<p style="color:{ZINC["500"]}; font-size:.78rem; padding-top:.5rem;">'
+            "Prices aren't in the daily-generated brief — the pipeline runs before the "
+            "market opens, so there'd be nothing real to show yet. Click refresh once "
+            "the market's open for today's actual print.</p>",
+            unsafe_allow_html=True)
+        if st.session_state.get("watchlist_prices_error"):
+            st.warning(f"Could not fetch prices: {st.session_state['watchlist_prices_error']}")
+
+        watchlist_prices = st.session_state.get("watchlist_prices", {})
+        watchlist_articles = brief.get("watchlist_articles", {})
+        if not isinstance(watchlist_articles, dict):
+            watchlist_articles = {}
+
+        if config.WATCHLIST_BENCHMARKS:
+            st.markdown(render_watchlist(config.WATCHLIST_BENCHMARKS, watchlist_articles,
+                                         watchlist_prices, dark=True),
+                       unsafe_allow_html=True)
+            st.markdown("<div style='height:.75rem'></div>", unsafe_allow_html=True)
+        st.markdown(render_watchlist(config.WATCHLIST_TICKERS, watchlist_articles, watchlist_prices),
+                   unsafe_allow_html=True)
+        st.markdown("<div style='height:1.4rem'></div>", unsafe_allow_html=True)
 
         # `macro_bullets` (short, one-theme-per-line) replaced the old single
         # paragraph — a stale cached brief on disk may still carry the

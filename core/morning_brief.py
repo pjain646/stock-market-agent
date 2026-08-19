@@ -6,7 +6,7 @@ Preyansh can form his own view independently of the model. It NEVER touches
 `predicted_up_probability` or the ranked candidate list — no agent scores or
 predicts here, only reports (spec §6: "no agent scores or predicts").
 
-Three tiers, deliberately not full-universe coverage every morning (cost
+Four tiers, deliberately not full-universe coverage every morning (cost
 control):
   1. Macro/world — `fetch_market_news` (Finnhub's general-news endpoint, the
      same provider/key already used for per-ticker sentiment, just a
@@ -17,6 +17,9 @@ control):
   3. Ticker-level news — "everything that matters," not everything:
      `select_brief_tickers` picks the day's movers plus one name per industry
      not already covered, then reuses `live_sentiment.fetch_headlines`.
+  4. Watch list — `build_watchlist_articles`, guaranteed (not competitively
+     curated) coverage for Preyansh's own tracked tickers (`config.WATCHLIST_*`),
+     excluded from tier 3's output so a name isn't shown twice.
 
 One LLM call (`_synthesize`) turns all three into brief prose, and also picks
 the most material headlines by id (`top_articles`) out of everything fetched —
@@ -130,6 +133,39 @@ def fetch_ticker_briefs(tickers: list[str], as_of=None,
                                max_articles=5)
         for ticker in tickers
     }
+
+
+def build_watchlist_articles(as_of=None, max_per_ticker: int = 3) -> dict[str, list[dict]]:
+    """News for Preyansh's personal watch list (`config.WATCHLIST_*`).
+
+    Deliberately NOT routed through the LLM's competitive `top_articles`
+    ranking in `synthesize_brief` — that step rations to ~15 slots across the
+    WHOLE universe, which could starve an individual watch-list name some
+    morning. This guarantees every watch-list ticker gets its own coverage,
+    every day, independent of what else is happening in the market.
+
+    Reuters is still filtered out where possible (same paywall reasoning as
+    `synthesize_brief`), but — unlike the general Top stories feed, which can
+    just skip to the next-best story — a watch-list ticker with only Reuters
+    coverage that day falls back to showing it anyway: for a name Preyansh is
+    actively watching, a paywalled link beats no link at all.
+    """
+    tickers = list(dict.fromkeys(config.WATCHLIST_BENCHMARKS + config.WATCHLIST_TICKERS))
+    headlines_by_ticker = fetch_ticker_briefs(tickers, as_of=as_of, lookback_days=3)
+
+    articles_by_ticker: dict[str, list[dict]] = {}
+    for ticker, headlines in headlines_by_ticker.items():
+        if headlines.empty:
+            articles_by_ticker[ticker] = []
+            continue
+        records = [
+            {"ticker": ticker, "headline": row.headline, "source": row.source,
+             "url": row.url, "datetime": row.datetime.isoformat()}
+            for row in headlines.sort_values("datetime", ascending=False).itertuples()
+        ]
+        non_reuters = [r for r in records if "reuters" not in (r["source"] or "").lower()]
+        articles_by_ticker[ticker] = (non_reuters or records)[:max_per_ticker]
+    return articles_by_ticker
 
 
 async def _synthesize(payload: str) -> tuple[dict, float | None]:
@@ -306,6 +342,13 @@ def build_morning_brief(panel: pd.DataFrame, as_of=None) -> tuple[dict, float]:
 
     narrative, cost, articles = synthesize_brief(market_news, internals, ticker_headlines)
 
+    watchlist_articles = build_watchlist_articles(as_of=as_of)
+    # Top stories is "what else is happening" — a watch-list name already
+    # gets its own guaranteed section below, so drop it here rather than
+    # showing it twice.
+    watchlist_set = set(config.WATCHLIST_BENCHMARKS) | set(config.WATCHLIST_TICKERS)
+    articles = [a for a in articles if a.get("ticker") not in watchlist_set]
+
     as_of_str = (pd.Timestamp(as_of) if as_of else pd.Timestamp.today()).strftime("%Y-%m-%d")
     # The LLM is only asked (via the system prompt), never forced, to shape
     # `tickers` as an object keyed by ticker — a plain JSON parse success
@@ -327,6 +370,7 @@ def build_morning_brief(panel: pd.DataFrame, as_of=None) -> tuple[dict, float]:
         "industry_moves": internals["industry_moves"],
         "ticker_notes": ticker_notes,
         "articles": articles,
+        "watchlist_articles": watchlist_articles,
     }, cost
 
 
