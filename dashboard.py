@@ -129,12 +129,15 @@ h2, h3 {{ font-weight: 600 !important; letter-spacing: -0.02em; }}
     background: {ACCENT_SOFT} !important; box-shadow: inset 0 0 0 1px {ACCENT_BORDER_SOFT} !important;
     color: {ACCENT} !important; font-weight: 600 !important;
 }}
-/* the product is Stock predictions + Morning brief — the first two pills;
-   everything after is secondary research detail. A divider after pill 2
-   marks that split without needing a second nav widget. */
-[data-testid="stButtonGroup"] button[data-variant="pills"]:nth-of-type(2) {{
+/* Three groups in the pill row: Product (Stock predictions, Morning brief),
+   Proof (Track record, Holdout verdicts), Process (Experiment detail,
+   Research debate, Metrics) — dividers after pill 2 and pill 4 mark the
+   splits without needing three separate nav widgets. */
+[data-testid="stButtonGroup"] button[data-variant="pills"]:nth-of-type(2),
+[data-testid="stButtonGroup"] button[data-variant="pills"]:nth-of-type(4) {{
     margin-right: .55rem !important; padding-right: .95rem !important;
     border-right: 1px solid {ZINC["300"]} !important;
+}}
 .stDownloadButton button, .stButton button {{
     border-radius: 10px; border: 1px solid {ZINC["300"]}; font-weight: 500;
     box-shadow: 0 1px 2px rgba(0,0,0,.2);
@@ -694,6 +697,21 @@ else:
 
 st.markdown(f'<p style="color:{ZINC["500"]}; font-size:.78rem; margin-top:.5rem;">{MONEY_DISCLAIMER}</p>',
             unsafe_allow_html=True)
+
+# The failure rate IS the pitch, stated plainly rather than left for someone
+# to infer from the "N experiments" badge above: a system built to reject
+# its own ideas, not a hype machine. Only worth saying once there's enough
+# of a sample for "most ideas fail" to read as discipline instead of a
+# small-n excuse.
+rejected_count = len(tested) - len(tested[tested["tested_score"] > 0]) if not tested.empty else 0
+if len(tested) >= 5 and rejected_count > 0:
+    st.markdown(
+        f'<p style="color:{ZINC["500"]}; font-size:.85rem; margin-top:.5rem; line-height:1.6;">'
+        f'<strong style="color:{ZINC["950"]};">{rejected_count} of {len(tested)}</strong> tested ideas '
+        "didn't survive validation and were rejected. That's not a shortfall — a system that "
+        "keeps everything isn't being honest with itself.</p>",
+        unsafe_allow_html=True)
+
 st.markdown("<div style='height:.75rem'></div>", unsafe_allow_html=True)
 
 # ------------------------------------------------------------------- tabs
@@ -701,17 +719,24 @@ st.markdown("<div style='height:.75rem'></div>", unsafe_allow_html=True)
 # widget elsewhere on the page (e.g. the iteration selectors below) — any
 # interaction resets it to tab 0. st.pills backed by session_state does
 # persist, so it's used here as tab-like nav instead.
-# Stock predictions + Morning brief ARE the product; everything else
-# (Signals, Signal library, Experiment detail, Research debate, Holdout
-# verdicts, Metrics) is research/audit detail for when Preyansh wants to dig
-# in — hence leading with the first two, defaulting to the first, and the
-# nth-of-type(2) CSS divider above that visually splits the pill row there.
-TAB_NAMES = ["Stock predictions", "Morning brief", "Signals", "Signal library",
-             "Experiment detail", "Research debate", "Holdout verdicts", "Metrics"]
+# Three-part story instead of one flat list, so a first-time viewer (a
+# recruiter, say) gets a narrative instead of 7 undifferentiated buttons:
+#   1. THE PRODUCT — Stock predictions, Morning brief. What it does. Default tab.
+#   2. THE PROOF — Track record, Holdout verdicts. Does it actually work.
+#   3. THE PROCESS — Experiment detail, Research debate, Metrics. How it was
+#      proven, for whoever wants to dig in.
+# The nth-of-type(2)/(4) CSS dividers above mark the two splits.
+TAB_NAMES = ["Stock predictions", "Morning brief", "Track record", "Holdout verdicts",
+             "Experiment detail", "Research debate", "Metrics"]
 active_tab = st.pills("Navigation", TAB_NAMES, default=TAB_NAMES[0],
                       key="active_tab", label_visibility="collapsed")
 
-if active_tab == "Signals":
+if active_tab == "Track record":
+    # Chart of what actually survived validation, first — that's the proof.
+    # Every idea tried (including every rejection) lives below it in an
+    # expander, reframed as evidence of discipline rather than a dry log.
+    st.markdown('<div class="sc-label">Proven signals — $ edge vs. the average stock</div>',
+                unsafe_allow_html=True)
     if monetary_summary.empty:
         st.write("No tested signals with enough out-of-sample data yet.")
     else:
@@ -749,13 +774,7 @@ if active_tab == "Signals":
         st.dataframe(display_ranking, use_container_width=True, hide_index=True)
         st.caption(MONEY_DISCLAIMER)
 
-if active_tab == "Signal library":
-    st.markdown('<div class="sc-label">Every signal tried so far</div>', unsafe_allow_html=True)
-    st.markdown(
-        f'<p style="color:{ZINC["500"]}; font-size:.85rem;">One line on the idea behind each of the '
-        f'{len(experiments)} feature bundles the researcher has proposed, newest first.</p>',
-        unsafe_allow_html=True,
-    )
+    st.markdown("<div style='height:1rem'></div>", unsafe_allow_html=True)
     if experiments.empty:
         st.write("Nothing tested yet.")
     else:
@@ -783,7 +802,14 @@ if active_tab == "Signal library":
             }
             for row in experiments.itertuples()
         ]).sort_values("Iteration", ascending=False)
-        st.dataframe(library_rows, use_container_width=True, hide_index=True)
+        with st.expander(f"Every idea tried — all {len(experiments)}, including what didn't survive"):
+            st.markdown(
+                f'<p style="color:{ZINC["500"]}; font-size:.85rem;">One line on the idea behind each '
+                "feature bundle the researcher has proposed, newest first. Most of these were "
+                "rejected — that's expected, not a failure of the process.</p>",
+                unsafe_allow_html=True,
+            )
+            st.dataframe(library_rows, use_container_width=True, hide_index=True)
 
 if active_tab == "Stock predictions":
     # The product's actual output: per-stock predictions from COMBINED proven
