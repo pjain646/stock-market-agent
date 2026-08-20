@@ -481,6 +481,130 @@ def _fetch_earnings_alpha_vantage(ticker: str) -> list[dict]:
     return earnings_records
 
 
+# News is far more time-sensitive than the 30-day-cached earnings data above,
+# but still cached briefly (not per-second) so a single morning-brief run
+# that touches this endpoint twice (market news + company news) doesn't
+# burn two calls for what's effectively the same moment in time.
+_ALPHA_VANTAGE_NEWS_CACHE_MAX_AGE_DAYS = 0.25  # ~6 hours
+
+
+def fetch_alpha_vantage_market_news(limit: int = 50) -> pd.DataFrame:
+    """General financial-market news via Alpha Vantage's NEWS_SENTIMENT
+    endpoint (topics=financial_markets) — a SECOND, differently-sourced feed
+    alongside Finnhub's `fetch_market_news`, meant to be merged with it for
+    outlet diversity (Finnhub's general feed skews heavily Reuters, which
+    `core/morning_brief.py` filters out as paywalled — this widens what's
+    left to choose from).
+
+    ONE call regardless of how many articles come back — the free tier is
+    25 calls/day, shared with the earnings endpoint above.
+
+    Returns DataFrame [datetime, headline, summary, source, url], newest
+    first. Empty DataFrame on no coverage, a missing key, or a transient AV
+    outage — this is a nice-to-have supplement, never a required source, so
+    it never raises.
+    """
+    columns = ["datetime", "headline", "summary", "source", "url"]
+    try:
+        payload = _alpha_vantage_get(
+            {"function": "NEWS_SENTIMENT", "topics": "financial_markets", "limit": str(limit)},
+            cache_max_age_days=_ALPHA_VANTAGE_NEWS_CACHE_MAX_AGE_DAYS,
+        )
+    except Exception:
+        return pd.DataFrame(columns=columns)
+
+    feed = payload.get("feed", []) if isinstance(payload, dict) else []
+    records = []
+    for article in feed:
+        published = article.get("time_published")
+        if not published:
+            continue
+        try:
+            published_dt = pd.to_datetime(published, format="%Y%m%dT%H%M%S")
+        except (ValueError, TypeError):
+            continue
+        records.append({
+            "datetime": published_dt,
+            "headline": article.get("title", ""),
+            "summary": article.get("summary", ""),
+            "source": article.get("source", ""),
+            "url": article.get("url", ""),
+        })
+    if not records:
+        return pd.DataFrame(columns=columns)
+    return (pd.DataFrame(records)
+            .sort_values("datetime", ascending=False)
+            .reset_index(drop=True))
+
+
+def fetch_alpha_vantage_company_news(tickers: list[str], limit: int = 50,
+                                     min_relevance: float = 0.15) -> pd.DataFrame:
+    """Per-ticker news via Alpha Vantage's NEWS_SENTIMENT endpoint — a
+    SECOND, differently-sourced feed alongside Finnhub's `fetch_company_news`
+    (via `core/live_sentiment.py`'s `fetch_headlines`).
+
+    ONE call covers every ticker in `tickers` at once (AV accepts a
+    comma-joined `tickers` param, up to 50) — never one call per ticker,
+    since the free tier is 25 calls/day. Each returned article can be
+    relevant to several of the requested tickers at once; AV's own
+    `ticker_sentiment` list says which, with a relevance score, so this
+    explodes one article into one row per ticker it's ACTUALLY relevant to
+    (>= `min_relevance`) rather than attributing it to every ticker asked for.
+
+    Returns DataFrame [ticker, datetime, headline, summary, source, url].
+    Empty DataFrame on no coverage, a missing key, or a transient AV outage —
+    this is a nice-to-have supplement, never a required source, so it never
+    raises.
+    """
+    columns = ["ticker", "datetime", "headline", "summary", "source", "url"]
+    if not tickers:
+        return pd.DataFrame(columns=columns)
+    requested = {t.upper() for t in tickers}
+    try:
+        payload = _alpha_vantage_get(
+            {"function": "NEWS_SENTIMENT", "tickers": ",".join(sorted(requested)),
+             "limit": str(limit)},
+            cache_max_age_days=_ALPHA_VANTAGE_NEWS_CACHE_MAX_AGE_DAYS,
+        )
+    except Exception:
+        return pd.DataFrame(columns=columns)
+
+    feed = payload.get("feed", []) if isinstance(payload, dict) else []
+    records = []
+    for article in feed:
+        published = article.get("time_published")
+        if not published:
+            continue
+        try:
+            published_dt = pd.to_datetime(published, format="%Y%m%dT%H%M%S")
+        except (ValueError, TypeError):
+            continue
+        for ticker_sentiment in article.get("ticker_sentiment", []):
+            ticker = str(ticker_sentiment.get("ticker", "")).upper()
+            if ticker not in requested:
+                continue
+            try:
+                relevance = float(ticker_sentiment.get("relevance_score", 0))
+            except (TypeError, ValueError):
+                relevance = 0.0
+            if relevance < min_relevance:
+                continue
+            records.append({
+                "ticker": ticker,
+                "datetime": published_dt,
+                "headline": article.get("title", ""),
+                "summary": article.get("summary", ""),
+                "source": article.get("source", ""),
+                "url": article.get("url", ""),
+            })
+    if not records:
+        return pd.DataFrame(columns=columns)
+    return (pd.DataFrame(records)
+            .drop_duplicates(subset=["ticker", "url"])
+            .sort_values(["ticker", "datetime"], ascending=[True, False])
+            .reset_index(drop=True))
+
+
 def fetch_earnings(tickers) -> pd.DataFrame:
     """Earnings dates and surprises (actual vs. estimated EPS and revenue).
 

@@ -29,7 +29,7 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 
-from core import monetary_metric
+from core import config, monetary_metric
 
 PROJECT_ROOT = pathlib.Path(__file__).resolve().parent
 JOURNAL_DB = PROJECT_ROOT / "journal.db"
@@ -112,20 +112,29 @@ h2, h3 {{ font-weight: 600 !important; letter-spacing: -0.02em; }}
 [data-testid="stDataFrame"] {{
     border: 1px solid {ZINC["200"]}; border-radius: 16px; box-shadow: {SHADOW};
 }}
-/* tab-like nav — st.pills backed by session_state, see comment at call site */
-[data-testid="stPills"] {{
+/* tab-like nav — st.pills backed by session_state, see comment at call site.
+   Streamlit renders this as a [data-testid="stButtonGroup"] of
+   button[data-variant="pills"] radios (aria-checked marks the active one) —
+   not the stPills/stBaseButton-pills testids older Streamlit versions used. */
+[data-testid="stButtonGroup"] {{
     gap: .25rem; background: {ZINC["100"]}; padding: .3rem; border-radius: 12px;
     width: fit-content; margin-bottom: .75rem;
 }}
-[data-testid="stPills"] [data-testid="stBaseButton-pills"] {{
+[data-testid="stButtonGroup"] button[data-variant="pills"] {{
     border-radius: 9px !important; padding: .35rem .95rem !important;
     font-weight: 500 !important; font-size: .85rem !important; border: none !important;
     background: transparent !important; color: {ZINC["500"]} !important; box-shadow: none !important;
 }}
-[data-testid="stPills"] [data-testid="stBaseButton-pillsActive"] {{
+[data-testid="stButtonGroup"] button[data-variant="pills"][aria-checked="true"] {{
     background: {ACCENT_SOFT} !important; box-shadow: inset 0 0 0 1px {ACCENT_BORDER_SOFT} !important;
     color: {ACCENT} !important; font-weight: 600 !important;
 }}
+/* the product is Stock predictions + Morning brief — the first two pills;
+   everything after is secondary research detail. A divider after pill 2
+   marks that split without needing a second nav widget. */
+[data-testid="stButtonGroup"] button[data-variant="pills"]:nth-of-type(2) {{
+    margin-right: .55rem !important; padding-right: .95rem !important;
+    border-right: 1px solid {ZINC["300"]} !important;
 .stDownloadButton button, .stButton button {{
     border-radius: 10px; border: 1px solid {ZINC["300"]}; font-weight: 500;
     box-shadow: 0 1px 2px rgba(0,0,0,.2);
@@ -433,15 +442,39 @@ def _time_ago(iso_datetime: str) -> str:
     return f"{hours / 24:.0f}d ago"
 
 
-def render_articles(articles: list[dict]) -> str:
-    """Morning-brief "top stories": real, clickable links straight from the
-    fetched news records (never LLM-authored) — see
-    `core/morning_brief.py`'s `_index_headlines`/`synthesize_brief` for how
-    the LLM's article picks get resolved back to their original url/source."""
+def render_macro_bullets(bullets: list[str]) -> str:
+    """Morning-brief macro summary as short scannable bullets instead of a
+    dense paragraph — each bullet is one distinct theme (see the
+    `macro_bullets` prompt in `core/morning_brief.py`)."""
+    icon_html = ('<span class="material-symbols-rounded" style="font-size:1rem; '
+                 'vertical-align:-3px; margin-right:.35rem; opacity:.75;">public</span>')
+    items = "".join(
+        '<div style="display:flex; gap:.55rem; align-items:flex-start; padding:.35rem 0;">'
+        f'<span style="flex-shrink:0; margin-top:.55rem; width:5px; height:5px; '
+        f'border-radius:50%; background:{ACCENT};"></span>'
+        f'<span style="font-size:.92rem; line-height:1.5; color:{ZINC["700"]};">'
+        f'{html.escape(bullet)}</span></div>'
+        for bullet in bullets
+    )
+    return (f'<div class="sc-card"><div class="sc-label">{icon_html}Macro / world</div>{items}</div>')
+
+
+def render_story_group(articles: list[dict], moves: dict[str, float] | None = None) -> str:
+    """One card of linked headlines — real urls/sources straight from the
+    fetched news records (never LLM-authored), see `core/morning_brief.py`'s
+    `_index_headlines`/`synthesize_brief` for how the LLM's article picks get
+    resolved back to their original url/source. A ticker-tagged story shows
+    its day's price move (from `moves`) right on the badge, colored the same
+    way the rest of the dashboard marks gains vs. losses."""
     rows = []
     for article in articles:
         ticker = article.get("ticker")
-        tag = badge(ticker, "solid") if ticker else badge("MACRO", "muted")
+        if ticker:
+            pct = moves.get(ticker) if moves else None
+            label = f"{ticker} {pct:+.1%}" if pct is not None else ticker
+            tag = badge(label, "solid" if (pct is None or pct >= 0) else "outline")
+        else:
+            tag = badge("MACRO", "muted")
         headline = html.escape(str(article.get("headline", "")))
         url = html.escape(str(article.get("url", "")), quote=True)
         source = html.escape(str(article.get("source", "")))
@@ -456,13 +489,69 @@ def render_articles(articles: list[dict]) -> str:
             f'border-bottom:1px solid {ZINC["200"]};">'
             f'<div style="flex-shrink:0; padding-top:.15rem;">{tag}</div>'
             '<div style="flex:1; min-width:0;">'
-            f'<div style="font-size:.92rem; line-height:1.4;">{headline_html}</div>'
+            f'<div style="font-size:.88rem; line-height:1.4;">{headline_html}</div>'
             f'<div class="sc-sub" style="margin-top:.15rem;">{meta}</div>'
             "</div></div>"
         )
     if rows:
         rows[-1] = rows[-1].replace(f'border-bottom:1px solid {ZINC["200"]};', "", 1)
     return f'<div class="sc-card">{"".join(rows)}</div>'
+
+
+def render_watchlist(tickers: list[str], articles_by_ticker: dict[str, list[dict]],
+                     prices: dict[str, dict] | None = None, dark: bool = False) -> str:
+    """Grid of watch-list ticker cards: latest price (only once fetched via
+    the on-demand "Refresh latest prices" button at the call site, since the
+    daily pipeline runs pre-market and can't know a current price at
+    generation time) plus that ticker's guaranteed news
+    (`core/morning_brief.py`'s `build_watchlist_articles`, never LLM-rationed
+    the way the general Top stories feed is)."""
+    prices = prices or {}
+    cards = []
+    for ticker in tickers:
+        price_info = prices.get(ticker)
+        if price_info:
+            price_html = (f'<span class="sc-value" style="font-size:1.05rem;">'
+                          f'${price_info["price"]:.2f}</span>'
+                          f'<div class="sc-sub" style="margin-top:0;">'
+                          f'{"latest" if price_info["is_today"] else "as of " + price_info["date"]}'
+                          f'</div>')
+        else:
+            price_html = f'<span class="sc-sub">Click refresh for the latest price</span>'
+
+        headline_rows = []
+        for article in articles_by_ticker.get(ticker, []):
+            headline = html.escape(str(article.get("headline", "")))
+            url = html.escape(str(article.get("url", "")), quote=True)
+            when = _time_ago(article.get("datetime", ""))
+            source = html.escape(str(article.get("source", "")))
+            meta = " · ".join(part for part in [source, when] if part)
+            headline_html = (
+                f'<a href="{url}" target="_blank" rel="noopener noreferrer" '
+                f'style="color:{ZINC["700"]}; text-decoration:none;">{headline}</a>'
+            ) if url else headline
+            headline_rows.append(
+                f'<div style="font-size:.78rem; line-height:1.4; margin-top:.4rem;">'
+                f'{headline_html}<div style="color:{ZINC["500"]}; font-size:.72rem; '
+                f'margin-top:.1rem;">{meta}</div></div>'
+            )
+        news_html = "".join(headline_rows) or (
+            f'<div style="font-size:.78rem; color:{ZINC["500"]}; margin-top:.4rem;">'
+            "No recent headlines.</div>"
+        )
+
+        css_class = "sc-card-dark" if dark else "sc-card"
+        cards.append(
+            f'<div class="{css_class}" style="min-width:0;">'
+            f'<div style="display:flex; align-items:baseline; justify-content:space-between; gap:.5rem;">'
+            f'<span class="sc-label" style="margin-bottom:0;">{html.escape(ticker)}</span>'
+            f'</div>'
+            f'<div style="margin-top:.3rem;">{price_html}</div>'
+            f'{news_html}'
+            "</div>"
+        )
+    return (f'<div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(230px, 1fr)); '
+            f'gap:.75rem;">{"".join(cards)}</div>')
 
 
 def freshness_indicator(as_of_date) -> str:
@@ -612,7 +701,12 @@ st.markdown("<div style='height:.75rem'></div>", unsafe_allow_html=True)
 # widget elsewhere on the page (e.g. the iteration selectors below) — any
 # interaction resets it to tab 0. st.pills backed by session_state does
 # persist, so it's used here as tab-like nav instead.
-TAB_NAMES = ["Signals", "Signal library", "Stock predictions", "Morning brief",
+# Stock predictions + Morning brief ARE the product; everything else
+# (Signals, Signal library, Experiment detail, Research debate, Holdout
+# verdicts, Metrics) is research/audit detail for when Preyansh wants to dig
+# in — hence leading with the first two, defaulting to the first, and the
+# nth-of-type(2) CSS divider above that visually splits the pill row there.
+TAB_NAMES = ["Stock predictions", "Morning brief", "Signals", "Signal library",
              "Experiment detail", "Research debate", "Holdout verdicts", "Metrics"]
 active_tab = st.pills("Navigation", TAB_NAMES, default=TAB_NAMES[0],
                       key="active_tab", label_visibility="collapsed")
@@ -806,30 +900,128 @@ if active_tab == "Morning brief":
         st.markdown(f'<p style="color:{ZINC["500"]}; font-size:.85rem;">As of {as_of} '
                     f'{freshness_indicator(as_of)}</p>', unsafe_allow_html=True)
 
-        macro_text = brief.get("macro", "").strip()
-        st.markdown(
-            card("Macro / world", macro_text or "No macro news synthesized for this run.",
-                wrap=True, icon="public"),
+        # ------------------------------------------------------ watch list
+        # Preyansh's own tracked tickers — guaranteed news coverage (see
+        # core/morning_brief.py's build_watchlist_articles), shown first
+        # since this is the highest-priority content on the page. Price is
+        # deliberately NOT part of the daily-generated data: the pipeline
+        # runs pre-market (~7:30am Central), before there's a current price
+        # to show at all, so anything baked in at generation time would
+        # either be missing or silently stale (the same trap the
+        # Finnhub-freshness investigation surfaced earlier). Instead price
+        # is fetched live, on demand, only when this button is clicked —
+        # which is whenever Preyansh is actually looking.
+        #
+        # "Latest" here means the most recent close yfinance has — for
+        # today's still-open session that field updates continuously
+        # through the day (Yahoo keeps "today"'s daily-bar Close current
+        # intraday), so this is the closest thing to a live price without
+        # standing up a real-time feed/websocket. See the Aug-19 chat about
+        # why true tick-by-tick "live" isn't realistic on this stack.
+        st.markdown('<div class="sc-label" style="margin-top:.2rem">Watch list</div>',
+                    unsafe_allow_html=True)
+        button_col, caption_col = st.columns([1, 3])
+        if button_col.button("Refresh latest prices", key="refresh_watchlist_prices"):
+            with st.spinner("Fetching latest prices ..."):
+                try:
+                    import yfinance as yf
+
+                    watch_tickers = list(dict.fromkeys(
+                        config.WATCHLIST_BENCHMARKS + config.WATCHLIST_TICKERS))
+                    raw_prices = yf.download(watch_tickers, period="5d", interval="1d",
+                                             auto_adjust=False, progress=False,
+                                             group_by="ticker")
+                    today_date = pd.Timestamp.today().normalize()
+                    fetched_prices = {}
+                    for ticker in watch_tickers:
+                        try:
+                            series = raw_prices[ticker].dropna(subset=["Close"])
+                            if series.empty:
+                                continue
+                            last_date = series.index[-1].normalize()
+                            fetched_prices[ticker] = {
+                                "price": float(series.iloc[-1]["Close"]),
+                                "date": last_date.strftime("%Y-%m-%d"),
+                                "is_today": last_date == today_date,
+                            }
+                        except (KeyError, IndexError):
+                            continue  # this one ticker had no data — skip, don't fail the rest
+                    st.session_state["watchlist_prices"] = fetched_prices
+                    st.session_state.pop("watchlist_prices_error", None)
+                except Exception as exc:  # network error, yfinance outage, etc.
+                    st.session_state["watchlist_prices_error"] = str(exc)
+        caption_col.markdown(
+            f'<p style="color:{ZINC["500"]}; font-size:.78rem; padding-top:.5rem;">'
+            "Prices aren't in the daily-generated brief — the pipeline runs before the "
+            "market opens, so there'd be nothing real to show yet. Click refresh for "
+            "the latest available price.</p>",
             unsafe_allow_html=True)
+        if st.session_state.get("watchlist_prices_error"):
+            st.warning(f"Could not fetch prices: {st.session_state['watchlist_prices_error']}")
+
+        watchlist_prices = st.session_state.get("watchlist_prices", {})
+        watchlist_articles = brief.get("watchlist_articles", {})
+        if not isinstance(watchlist_articles, dict):
+            watchlist_articles = {}
+
+        if config.WATCHLIST_BENCHMARKS:
+            st.markdown(render_watchlist(config.WATCHLIST_BENCHMARKS, watchlist_articles,
+                                         watchlist_prices, dark=True),
+                       unsafe_allow_html=True)
+            st.markdown("<div style='height:.75rem'></div>", unsafe_allow_html=True)
+        st.markdown(render_watchlist(config.WATCHLIST_TICKERS, watchlist_articles, watchlist_prices),
+                   unsafe_allow_html=True)
+        st.markdown("<div style='height:1.4rem'></div>", unsafe_allow_html=True)
+
+        # `macro_bullets` (short, one-theme-per-line) replaced the old single
+        # paragraph — a stale cached brief on disk may still carry the
+        # legacy `macro` string, so fall back to showing that as one bullet
+        # rather than showing nothing.
+        macro_bullets = brief.get("macro_bullets")
+        if not isinstance(macro_bullets, list) or not macro_bullets:
+            legacy_macro = brief.get("macro", "")
+            macro_bullets = [legacy_macro.strip()] if isinstance(legacy_macro, str) and legacy_macro.strip() else []
+        if macro_bullets:
+            st.markdown(render_macro_bullets(macro_bullets), unsafe_allow_html=True)
+
+        gainers, losers = brief.get("gainers", []), brief.get("losers", [])
+        moves = {m["ticker"]: m["pct_change"] for m in [*gainers, *losers] if "ticker" in m}
 
         articles = brief.get("articles", [])
         if not isinstance(articles, list):
             articles = []
-        if articles:
+        macro_articles = [a for a in articles if not a.get("ticker")]
+        ticker_articles = [a for a in articles if a.get("ticker")]
+        if macro_articles or ticker_articles:
             st.markdown('<div class="sc-label" style="margin-top:1.4rem">Top stories</div>',
                         unsafe_allow_html=True)
-            st.markdown(render_articles(articles), unsafe_allow_html=True)
+            story_columns = st.columns(2)
+            with story_columns[0]:
+                st.markdown('<div class="sc-sub" style="margin-bottom:.4rem;">World &amp; macro</div>',
+                            unsafe_allow_html=True)
+                if macro_articles:
+                    st.markdown(render_story_group(macro_articles), unsafe_allow_html=True)
+                else:
+                    st.markdown(f'<p style="color:{ZINC["500"]}; font-size:.82rem;">'
+                                f'No macro stories today.</p>', unsafe_allow_html=True)
+            with story_columns[1]:
+                st.markdown('<div class="sc-sub" style="margin-bottom:.4rem;">Ticker moves</div>',
+                            unsafe_allow_html=True)
+                if ticker_articles:
+                    st.markdown(render_story_group(ticker_articles, moves), unsafe_allow_html=True)
+                else:
+                    st.markdown(f'<p style="color:{ZINC["500"]}; font-size:.82rem;">'
+                                f'No ticker-specific stories today.</p>', unsafe_allow_html=True)
 
-        internals_text = brief.get("internals_narrative", "").strip()
-        if internals_text:
-            st.markdown(
-                f'<p style="color:{ZINC["700"]}; font-size:.9rem; margin-top:1rem;">{internals_text}</p>',
-                unsafe_allow_html=True)
-
-        gainers, losers = brief.get("gainers", []), brief.get("losers", [])
         if gainers or losers:
             st.markdown('<div class="sc-label" style="margin-top:1.4rem">Market internals</div>',
                         unsafe_allow_html=True)
+            internals_text = brief.get("internals_narrative", "").strip()
+            if internals_text:
+                st.markdown(
+                    f'<p style="color:{ZINC["500"]}; font-size:.82rem; margin:-.2rem 0 .6rem;">'
+                    f'{internals_text}</p>',
+                    unsafe_allow_html=True)
             movers_columns = st.columns(2)
             if gainers:
                 gainers_table = pd.DataFrame(gainers)[["ticker", "industry", "pct_change"]]
@@ -859,20 +1051,6 @@ if active_tab == "Morning brief":
                 tooltip=["industry", "pct_change"],
             ).properties(height=280)
             st.altair_chart(industry_chart, use_container_width=True)
-
-        # .get() only checks the key exists, not its type — a hand-edited or
-        # older-format morning_brief.json could carry a non-dict value here,
-        # and ticker_notes.items() below would crash the whole tab.
-        ticker_notes = brief.get("ticker_notes", {})
-        if not isinstance(ticker_notes, dict):
-            ticker_notes = {}
-        if ticker_notes:
-            st.markdown('<div class="sc-label" style="margin-top:1.4rem">Ticker notes</div>',
-                        unsafe_allow_html=True)
-            notes_table = pd.DataFrame(
-                [{"Ticker": ticker, "Note": note} for ticker, note in ticker_notes.items()]
-            )
-            st.dataframe(notes_table, use_container_width=True, hide_index=True)
     else:
         st.markdown('<div class="sc-label">This morning</div>', unsafe_allow_html=True)
         st.markdown(

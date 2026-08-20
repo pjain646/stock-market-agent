@@ -6,17 +6,29 @@ Preyansh can form his own view independently of the model. It NEVER touches
 `predicted_up_probability` or the ranked candidate list — no agent scores or
 predicts here, only reports (spec §6: "no agent scores or predicts").
 
-Three tiers, deliberately not full-universe coverage every morning (cost
-control):
-  1. Macro/world — `fetch_market_news` (Finnhub's general-news endpoint, the
-     same provider/key already used for per-ticker sentiment, just a
-     different endpoint — no new vendor).
+Four tiers, deliberately not full-universe coverage every morning (cost
+control). Tiers 1 and 3 each merge in a SECOND, differently-sourced feed —
+Alpha Vantage's NEWS_SENTIMENT endpoint (`fetch_alpha_vantage_market_news`/
+`fetch_alpha_vantage_company_news`) — alongside Finnhub, for outlet
+diversity: Finnhub's general feed skews heavily Reuters (paywalled, filtered
+out of `top_articles`), and Alpha Vantage in practice carries essentially
+none. Not a new vendor either — `ALPHA_VANTAGE_API_KEY` was already wired up
+for the earnings fallback in `research-methodology/scripts/data.py`. Both AV
+functions degrade silently to "Finnhub only" on a missing key or an AV
+outage (they never raise), and stay within its 25-calls/day free tier by
+batching every ticker into ONE call rather than one call each.
+  1. Macro/world — `fetch_market_news` (Finnhub) + `fetch_alpha_vantage_market_news`.
   2. Market internals — `market_internals`, pure pandas over the price panel
      `research_pipeline.py` already fetches for candidate ranking. Zero new
      network calls.
   3. Ticker-level news — "everything that matters," not everything:
      `select_brief_tickers` picks the day's movers plus one name per industry
-     not already covered, then reuses `live_sentiment.fetch_headlines`.
+     not already covered, then `fetch_ticker_briefs` merges
+     `live_sentiment.fetch_headlines` (Finnhub) with
+     `fetch_alpha_vantage_company_news`.
+  4. Watch list — `build_watchlist_articles`, guaranteed (not competitively
+     curated) coverage for Preyansh's own tracked tickers (`config.WATCHLIST_*`),
+     excluded from tier 3's output so a name isn't shown twice.
 
 One LLM call (`_synthesize`) turns all three into brief prose, and also picks
 the most material headlines by id (`top_articles`) out of everything fetched —
@@ -119,17 +131,74 @@ def select_brief_tickers(internals: dict, industry_map: dict[str, str],
 
 def fetch_ticker_briefs(tickers: list[str], as_of=None,
                         lookback_days: int = 3) -> dict[str, pd.DataFrame]:
-    """Recent headlines per ticker.
+    """Recent headlines per ticker, from Finnhub AND Alpha Vantage merged.
 
-    Reuses `live_sentiment.fetch_headlines` with a short lookback (a few
+    Finnhub via `live_sentiment.fetch_headlines`, short lookback (a few
     days) appropriate for "what happened before this morning," not the
     21-day rolling window `live_sentiment` uses for its sentiment score.
+
+    Alpha Vantage's `fetch_alpha_vantage_company_news` is merged in (deduped
+    by url) as a second, differently-sourced feed — ONE call covers every
+    ticker passed in here, never one call per ticker, since its free tier is
+    25 calls/day. A missing key or an AV outage degrades silently to
+    Finnhub-only (that function never raises), so this never fails BECAUSE
+    of the supplemental source.
     """
-    return {
+    sys.path.insert(0, str(PROJECT_ROOT / "research-methodology" / "scripts"))
+    from data import fetch_alpha_vantage_company_news
+
+    finnhub_by_ticker = {
         ticker: fetch_headlines(ticker, as_of=as_of, lookback_days=lookback_days,
                                max_articles=5)
         for ticker in tickers
     }
+    av_all = fetch_alpha_vantage_company_news(tickers)
+
+    merged: dict[str, pd.DataFrame] = {}
+    for ticker in tickers:
+        parts = [finnhub_by_ticker[ticker]]
+        if not av_all.empty:
+            parts.append(av_all[av_all["ticker"] == ticker])
+        combined = pd.concat(parts, ignore_index=True)
+        if not combined.empty:
+            combined = (combined.drop_duplicates(subset=["url"])
+                       .sort_values("datetime", ascending=False)
+                       .reset_index(drop=True))
+        merged[ticker] = combined
+    return merged
+
+
+def build_watchlist_articles(as_of=None, max_per_ticker: int = 3) -> dict[str, list[dict]]:
+    """News for Preyansh's personal watch list (`config.WATCHLIST_*`).
+
+    Deliberately NOT routed through the LLM's competitive `top_articles`
+    ranking in `synthesize_brief` — that step rations to ~15 slots across the
+    WHOLE universe, which could starve an individual watch-list name some
+    morning. This guarantees every watch-list ticker gets its own coverage,
+    every day, independent of what else is happening in the market.
+
+    Reuters is still filtered out where possible (same paywall reasoning as
+    `synthesize_brief`), but — unlike the general Top stories feed, which can
+    just skip to the next-best story — a watch-list ticker with only Reuters
+    coverage that day falls back to showing it anyway: for a name Preyansh is
+    actively watching, a paywalled link beats no link at all.
+    """
+    tickers = list(dict.fromkeys(config.WATCHLIST_BENCHMARKS + config.WATCHLIST_TICKERS))
+    headlines_by_ticker = fetch_ticker_briefs(tickers, as_of=as_of, lookback_days=3)
+
+    articles_by_ticker: dict[str, list[dict]] = {}
+    for ticker, headlines in headlines_by_ticker.items():
+        if headlines.empty:
+            articles_by_ticker[ticker] = []
+            continue
+        records = [
+            {"ticker": ticker, "headline": row.headline, "source": row.source,
+             "url": row.url, "datetime": row.datetime.isoformat()}
+            for row in headlines.sort_values("datetime", ascending=False).itertuples()
+        ]
+        non_reuters = [r for r in records if "reuters" not in (r["source"] or "").lower()]
+        articles_by_ticker[ticker] = (non_reuters or records)[:max_per_ticker]
+    return articles_by_ticker
 
 
 async def _synthesize(payload: str) -> tuple[dict, float | None]:
@@ -148,10 +217,12 @@ async def _synthesize(payload: str) -> tuple[dict, float | None]:
         "stock — a separate statistical model already does that elsewhere and "
         "you must not influence it. Just report what's happening, factually.\n"
         "Given raw macro headlines and raw per-ticker headlines, each prefixed "
-        "with a bracketed id like [17], plus computed market-internals numbers, "
-        "write:\n"
-        "  - `macro`: 2-4 sentences on overnight macro/world news that could "
-        "move markets today.\n"
+        "with a bracketed id and source like [17](Reuters), plus computed "
+        "market-internals numbers, write:\n"
+        "  - `macro_bullets`: 3-5 short, single-sentence bullets, each a "
+        "DISTINCT overnight macro/world theme that could move markets today — "
+        "not a paragraph, not multiple sentences per bullet. Fewer than 3 if "
+        "fewer distinct themes are genuinely there.\n"
         "  - `internals`: 1-2 sentences on today's market internals (movers, "
         "sector rotation) using the numbers given — don't invent numbers.\n"
         "  - `tickers`: one short sentence per ticker naming the single most "
@@ -159,10 +230,21 @@ async def _synthesize(payload: str) -> tuple[dict, float | None]:
         "it has no material news rather than inventing filler.\n"
         "  - `top_articles`: an array of the bracketed ids (integers) of the "
         "most material headlines across BOTH the macro and per-ticker "
-        "sections combined, ranked most-material first. Pick as many as "
-        "genuinely matter — up to 15 — but fewer if fewer are truly "
-        "material; never pad to hit a count.\n"
-        "Reply with ONLY a JSON object with keys `macro`, `internals`, "
+        "sections combined, ranked most-material first. You are given far "
+        "more headlines than you need, so aim for AT LEAST 10 — go below 10 "
+        "only if the fetched headlines genuinely don't contain that many "
+        "distinct material stories, which should be rare. Up to 20. Never "
+        "pad with filler/duplicates just to hit a count, but do not "
+        "under-pick either when there is clearly enough real material. SKIP "
+        "any headline whose source is Reuters — it requires a paid "
+        "subscription to read, so it must never be picked here even if it's "
+        "the most material story; choose the next-best non-Reuters headline "
+        "covering that story instead (this is exactly why you're given more "
+        "headlines than the 10-20 you'll pick — there's room to skip past "
+        "Reuters and still hit the floor). Reuters headlines are still fair "
+        "game for `macro_bullets`/`internals`/`tickers` prose above, just "
+        "never as a `top_articles` id.\n"
+        "Reply with ONLY a JSON object with keys `macro_bullets`, `internals`, "
         "`tickers`, `top_articles`. No prose, no code fence."
     )
     fragments: list[str] = []
@@ -210,7 +292,7 @@ def _index_headlines(market_news: pd.DataFrame,
                 "ticker": None, "headline": row.headline, "source": row.source,
                 "url": row.url, "datetime": row.datetime.isoformat(),
             }
-            lines.append(f"[{next_id}] {row.datetime:%Y-%m-%d %H:%M} | {row.headline}")
+            lines.append(f"[{next_id}]({row.source}) {row.datetime:%Y-%m-%d %H:%M} | {row.headline}")
             next_id += 1
         macro_section = "=== MACRO/MARKET HEADLINES ===\n" + "\n".join(lines)
 
@@ -224,7 +306,7 @@ def _index_headlines(market_news: pd.DataFrame,
                 "ticker": ticker, "headline": row.headline, "source": row.source,
                 "url": row.url, "datetime": row.datetime.isoformat(),
             }
-            lines.append(f"[{next_id}] {row.datetime:%Y-%m-%d} | {row.headline}")
+            lines.append(f"[{next_id}]({row.source}) {row.datetime:%Y-%m-%d} | {row.headline}")
             next_id += 1
         ticker_sections.append(f"=== {ticker} HEADLINES ===\n" + "\n".join(lines))
 
@@ -255,7 +337,7 @@ def synthesize_brief(market_news: pd.DataFrame, internals: dict,
 
     payload = "\n\n".join(sections)
     if not payload.strip():
-        return {"macro": "", "internals": "", "tickers": {}}, 0.0, []
+        return {"macro_bullets": [], "internals": "", "tickers": {}}, 0.0, []
 
     narrative, cost = asyncio.run(_synthesize(payload))
 
@@ -267,11 +349,19 @@ def synthesize_brief(market_news: pd.DataFrame, internals: dict,
             article_id = int(raw_id)
         except (TypeError, ValueError):
             continue
-        if article_id in id_map and article_id not in seen_ids:
-            seen_ids.add(article_id)
-            articles.append(id_map[article_id])
+        if article_id not in id_map or article_id in seen_ids:
+            continue
+        record = id_map[article_id]
+        # Reuters requires a paid subscription to read — never surface it as
+        # a clickable link, even though its headlines still inform the prose
+        # above. Enforced here too, not just via the system prompt, since a
+        # prompt is a request, not a guarantee.
+        if "reuters" in (record.get("source") or "").lower():
+            continue
+        seen_ids.add(article_id)
+        articles.append(record)
 
-    return narrative, cost or 0.0, articles
+    return narrative, cost or 0.0, articles[:20]
 
 
 def build_morning_brief(panel: pd.DataFrame, as_of=None) -> tuple[dict, float]:
@@ -281,15 +371,36 @@ def build_morning_brief(panel: pd.DataFrame, as_of=None) -> tuple[dict, float]:
     needs. Never touches `predicted_up_probability` or the candidate ranking.
     """
     sys.path.insert(0, str(PROJECT_ROOT / "research-methodology" / "scripts"))
-    from data import fetch_market_news
+    from data import fetch_alpha_vantage_market_news, fetch_market_news
 
     industry_map = config.industry_map()
     internals = market_internals(panel, industry_map)
-    market_news = fetch_market_news()
+    # Reuters dominates Finnhub's general-news feed in practice, and all of
+    # it gets skipped for top_articles (see _synthesize's system prompt) —
+    # a wider raw pull gives the LLM enough non-Reuters alternatives left to
+    # still clear the 10-article floor.
+    market_news = fetch_market_news(max_articles=50)
+    # Alpha Vantage's general-market feed merged in as a second, differently-
+    # sourced pool (zero Reuters in practice) — degrades silently to
+    # Finnhub-only if AV has no key or is down, since that function never
+    # raises.
+    av_market_news = fetch_alpha_vantage_market_news()
+    if not av_market_news.empty:
+        market_news = (pd.concat([market_news, av_market_news], ignore_index=True)
+                       .drop_duplicates(subset=["url"])
+                       .sort_values("datetime", ascending=False)
+                       .reset_index(drop=True))
     brief_tickers = select_brief_tickers(internals, industry_map)
     ticker_headlines = fetch_ticker_briefs(brief_tickers, as_of=as_of)
 
     narrative, cost, articles = synthesize_brief(market_news, internals, ticker_headlines)
+
+    watchlist_articles = build_watchlist_articles(as_of=as_of)
+    # Top stories is "what else is happening" — a watch-list name already
+    # gets its own guaranteed section below, so drop it here rather than
+    # showing it twice.
+    watchlist_set = set(config.WATCHLIST_BENCHMARKS) | set(config.WATCHLIST_TICKERS)
+    articles = [a for a in articles if a.get("ticker") not in watchlist_set]
 
     as_of_str = (pd.Timestamp(as_of) if as_of else pd.Timestamp.today()).strftime("%Y-%m-%d")
     # The LLM is only asked (via the system prompt), never forced, to shape
@@ -299,15 +410,20 @@ def build_morning_brief(panel: pd.DataFrame, as_of=None) -> tuple[dict, float]:
     ticker_notes = narrative.get("tickers", {})
     if not isinstance(ticker_notes, dict):
         ticker_notes = {}
+    macro_bullets = narrative.get("macro_bullets", [])
+    if not isinstance(macro_bullets, list):
+        macro_bullets = []
+    macro_bullets = [b.strip() for b in macro_bullets if isinstance(b, str) and b.strip()]
     return {
         "as_of": as_of_str,
-        "macro": narrative.get("macro", ""),
+        "macro_bullets": macro_bullets,
         "internals_narrative": narrative.get("internals", ""),
         "gainers": internals["gainers"],
         "losers": internals["losers"],
         "industry_moves": internals["industry_moves"],
         "ticker_notes": ticker_notes,
         "articles": articles,
+        "watchlist_articles": watchlist_articles,
     }, cost
 
 
