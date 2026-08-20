@@ -50,7 +50,7 @@ UNIVERSE = {
 # NOT already being watched. Edit this list directly to add/remove tickers.
 WATCHLIST_BENCHMARKS = ["SPY", "VGT", "QQQ"]  # shown first, as market context
 WATCHLIST_TICKERS = [
-    "AAPL", "MSFT", "NVDA", "TSLA", "AMZN", "GOOGL",   # mega-cap tech
+    "AAPL", "MSFT", "NVDA", "TSLA", "AMZN", "GOOGL", "META",  # mega-cap tech
     "MU", "SNDK", "DRAM",                              # memory/DRAM
     "USAR", "IREN", "OUST", "AMD", "RKLB", "PLTR", "MRVL",
 ]
