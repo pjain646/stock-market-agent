@@ -129,12 +129,6 @@ h2, h3 {{ font-weight: 600 !important; letter-spacing: -0.02em; }}
     background: {ACCENT_SOFT} !important; box-shadow: inset 0 0 0 1px {ACCENT_BORDER_SOFT} !important;
     color: {ACCENT} !important; font-weight: 600 !important;
 }}
-/* the product is Stock predictions + Morning brief — the first two pills;
-   everything after is secondary research detail. A divider after pill 2
-   marks that split without needing a second nav widget. */
-[data-testid="stButtonGroup"] button[data-variant="pills"]:nth-of-type(2) {{
-    margin-right: .55rem !important; padding-right: .95rem !important;
-    border-right: 1px solid {ZINC["300"]} !important;
 .stDownloadButton button, .stButton button {{
     border-radius: 10px; border: 1px solid {ZINC["300"]}; font-weight: 500;
     box-shadow: 0 1px 2px rgba(0,0,0,.2);
@@ -591,12 +585,35 @@ def freshness_indicator(as_of_date) -> str:
 # ------------------------------------------------------------------ header
 header_left, header_right = st.columns([3, 1])
 with header_left:
-    st.markdown('<h1 style="margin-bottom:0;">Self-Improving Market Research Agent</h1>',
+    st.markdown('<h1 style="margin-bottom:0;">Welcome to Sentry</h1>',
                 unsafe_allow_html=True)
     st.markdown(
-        f'<p style="color:{ZINC["500"]}; margin-top:-0.3rem; font-size:.92rem;">'
-        "AI proposes stock-picking signals. A deterministic judge tests each one on "
-        "data it's never seen before trusting it.</p>", unsafe_allow_html=True,
+        f'<p style="color:{ZINC["500"]}; margin-top:-0.2rem; font-size:.95rem; font-weight:500;">'
+        "My personal stock market assistant</p>", unsafe_allow_html=True,
+    )
+    st.markdown(
+        f'<p style="color:{ZINC["700"]}; font-size:.9rem; line-height:1.6; max-width:640px;">'
+        "I recently got into investing and wanted a fast way to aggregate market "
+        "information every morning, plus a third-party opinion on stocks worth a "
+        "closer look for the long run. So I built this.</p>", unsafe_allow_html=True,
+    )
+    def _term(label: str) -> str:
+        return f'<strong style="color:{ZINC["950"]};">{label}</strong>'
+
+    st.markdown(
+        f'<p style="color:{ZINC["500"]}; font-size:.82rem; line-height:1.6; max-width:640px;">'
+        f'{_term("Morning brief")} aggregates news and market data so I can make my own calls. '
+        f'{_term("Stock predictions")} are live picks the agent expects to rise the most over '
+        "the next 21 days.</p>", unsafe_allow_html=True,
+    )
+    st.markdown(
+        f'<p style="color:{ZINC["500"]}; font-size:.82rem; line-height:1.6; max-width:640px;">'
+        f'Under {_term("Research")}: {_term("Track record")} is which tested signals actually '
+        f'made money. {_term("Holdout verdicts")} is the final pass/fail check on data the model '
+        f'never saw. {_term("Experiment detail")} is the full log of every signal tried, including '
+        f'the failures. {_term("Research debate")} is the AI researchers reasoning through an idea '
+        f'before it gets tested. {_term("Metrics")} is the methodology behind all of it.</p>',
+        unsafe_allow_html=True,
     )
 with header_right:
     st.markdown(
@@ -648,22 +665,6 @@ st.markdown(
     + '</div></div>', unsafe_allow_html=True,
 )
 
-rigor_badges = " ".join([
-    badge("Purged walk-forward validation",
-          title="Tested on 6 chronological chunks of data, always training on the past and "
-                "predicting the future — with a gap before each test chunk so no training "
-                "row can accidentally peek at test-period information."),
-    badge("Sealed one-time holdout",
-          title="A slice of data the model never saw during development, checked exactly "
-                "once at the very end of a run — the closest thing to a real, honest final exam."),
-    badge("3-model cross-check",
-          title="Every signal is scored by three different model types. If only one of them "
-                "sees an edge, that's treated as a red flag, not a win."),
-    badge(f"{len(experiments)} experiments, ${total_cost:,.0f} spent",
-          title="Every signal this project has ever tried, including the ones that failed."),
-])
-st.markdown(f'<div style="margin-bottom:1.2rem;">{rigor_badges}</div>', unsafe_allow_html=True)
-
 # Hero (dark) card = the headline number; the rest stay light. Only the
 # external ($) metric appears here — internal research metrics live behind
 # "technical details" in the Experiment detail tab and on the Metrics page.
@@ -694,6 +695,7 @@ else:
 
 st.markdown(f'<p style="color:{ZINC["500"]}; font-size:.78rem; margin-top:.5rem;">{MONEY_DISCLAIMER}</p>',
             unsafe_allow_html=True)
+
 st.markdown("<div style='height:.75rem'></div>", unsafe_allow_html=True)
 
 # ------------------------------------------------------------------- tabs
@@ -701,17 +703,30 @@ st.markdown("<div style='height:.75rem'></div>", unsafe_allow_html=True)
 # widget elsewhere on the page (e.g. the iteration selectors below) — any
 # interaction resets it to tab 0. st.pills backed by session_state does
 # persist, so it's used here as tab-like nav instead.
-# Stock predictions + Morning brief ARE the product; everything else
-# (Signals, Signal library, Experiment detail, Research debate, Holdout
-# verdicts, Metrics) is research/audit detail for when Preyansh wants to dig
-# in — hence leading with the first two, defaulting to the first, and the
-# nth-of-type(2) CSS divider above that visually splits the pill row there.
-TAB_NAMES = ["Stock predictions", "Morning brief", "Signals", "Signal library",
-             "Experiment detail", "Research debate", "Holdout verdicts", "Metrics"]
-active_tab = st.pills("Navigation", TAB_NAMES, default=TAB_NAMES[0],
-                      key="active_tab", label_visibility="collapsed")
+# Two-level nav instead of one flat list of 7: the top row is what's used day
+# to day (Morning brief, Stock predictions) plus a single "Research" pill;
+# picking "Research" reveals a second pills row for the 5 tabs behind it
+# (Track record, Holdout verdicts, Experiment detail, Research debate,
+# Metrics), matching the two-paragraph explainer in the header bio above.
+RESEARCH_TAB_NAMES = ["Track record", "Holdout verdicts", "Experiment detail",
+                      "Research debate", "Metrics"]
+TOP_TAB_NAMES = ["Morning brief", "Stock predictions", "Research"]
+top_tab = st.pills("Navigation", TOP_TAB_NAMES, default=TOP_TAB_NAMES[0],
+                   key="top_tab", label_visibility="collapsed")
 
-if active_tab == "Signals":
+if top_tab == "Research":
+    active_tab = st.pills("Research navigation", RESEARCH_TAB_NAMES,
+                          default=RESEARCH_TAB_NAMES[0], key="research_tab",
+                          label_visibility="collapsed")
+else:
+    active_tab = top_tab
+
+if active_tab == "Track record":
+    # Chart of what actually survived validation, first — that's the proof.
+    # Every idea tried (including every rejection) lives below it in an
+    # expander, reframed as evidence of discipline rather than a dry log.
+    st.markdown('<div class="sc-label">Proven signals — $ edge vs. the average stock</div>',
+                unsafe_allow_html=True)
     if monetary_summary.empty:
         st.write("No tested signals with enough out-of-sample data yet.")
     else:
@@ -749,13 +764,7 @@ if active_tab == "Signals":
         st.dataframe(display_ranking, use_container_width=True, hide_index=True)
         st.caption(MONEY_DISCLAIMER)
 
-if active_tab == "Signal library":
-    st.markdown('<div class="sc-label">Every signal tried so far</div>', unsafe_allow_html=True)
-    st.markdown(
-        f'<p style="color:{ZINC["500"]}; font-size:.85rem;">One line on the idea behind each of the '
-        f'{len(experiments)} feature bundles the researcher has proposed, newest first.</p>',
-        unsafe_allow_html=True,
-    )
+    st.markdown("<div style='height:1rem'></div>", unsafe_allow_html=True)
     if experiments.empty:
         st.write("Nothing tested yet.")
     else:
@@ -783,7 +792,14 @@ if active_tab == "Signal library":
             }
             for row in experiments.itertuples()
         ]).sort_values("Iteration", ascending=False)
-        st.dataframe(library_rows, use_container_width=True, hide_index=True)
+        with st.expander(f"Every idea tried — all {len(experiments)}, including what didn't survive"):
+            st.markdown(
+                f'<p style="color:{ZINC["500"]}; font-size:.85rem;">One line on the idea behind each '
+                "feature bundle the researcher has proposed, newest first. Most of these were "
+                "rejected — that's expected, not a failure of the process.</p>",
+                unsafe_allow_html=True,
+            )
+            st.dataframe(library_rows, use_container_width=True, hide_index=True)
 
 if active_tab == "Stock predictions":
     # The product's actual output: per-stock predictions from COMBINED proven
