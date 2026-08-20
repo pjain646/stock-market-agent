@@ -1,13 +1,13 @@
 {
   "as_of": "2026-08-20",
   "macro_bullets": [
-    "Escalating US-Iran war keeps the Strait of Hormuz shut and vessels under threat after UAE reports fresh Iranian missiles, driving oil to multi-week highs.",
-    "Energy stocks hit record highs as fading US-Iran deal hopes push crude up, while Kenya Airways flags a 72% fuel-cost jump from the conflict.",
-    "US government bond yields are surging, weighing on tech and pressuring the broader Wall Street tape.",
-    "Gold hovers near record territory around $4,400-$4,500 as the dollar softens and long-dated bonds slump.",
-    "Marvell's new AI-chip deal with Google reshapes the semiconductor landscape, pressuring Broadcom and rekindling peak-cycle fears."
+    "Middle East war impasse and a UAE missile scare pushed oil to a roughly three-week high, lifting energy stocks to records.",
+    "Long-end US Treasury yields are surging, pressuring tech and weighing on premarket S&P 500 futures.",
+    "Gold is trading near record highs (~$4,400-4,500) as the dollar softens and traders eye a dovish Fed.",
+    "Merck and Moderna's positive melanoma vaccine results are driving a sharp move in pharma names.",
+    "AI-infrastructure headlines dominate corporate flow, from Marvell encroaching on Broadcom's Google business to Anthropic's pre-IPO credit facility topping $10 billion."
   ],
-  "internals_narrative": "Defensive and inflation-hedge sectors led with Pharma +2.6% and Materials +1.5%, and MRK (+12.6%) and NEM (+7.8%) topping gainers, while Financials -1.0% and Industrials -1.3% lagged with NUE -5.8%, GE -5.0% and AVGO -4.6% among the biggest losers. The rotation shows money moving into staples, materials and healthcare and out of banks, industrials and chipmakers amid the yield spike and Middle East tension.",
+  "internals_narrative": "Pharma (+2.6%) leads sectors with MRK the top gainer (+12.6%) alongside gold miner NEM (+7.8%), while Financials (-1.0%) and Industrials (-1.3%) lag and semiconductors slump with AVGO -4.6%, INTC -4.0% and AMD -3.7%.",
   "gainers": [
     {
       "ticker": "MRK",
@@ -179,33 +179,32 @@
     }
   ],
   "ticker_notes": {
-    "MRK": "Merck jumped on a Merck-Moderna cancer vaccine breakthrough touted as a potential mRNA catalyst.",
-    "NEM": "Newmont rallied alongside gold's surge toward $4,500.",
-    "NOW": "ServiceNow drew a rating downgrade even as one analyst argued the stock may be bottoming.",
-    "AVGO": "Broadcom fell as rival Marvell surged on a Google AI-chip deal that muscles in on a key customer.",
-    "TJX": "TJX slid after guiding Q3 adjusted EPS of $1.30-$1.32, below the $1.34 estimate, despite another strong quarter.",
-    "GE": "GE Aerospace and Kratos landed a US Air Force contract as Peltz bets on both sides of GE's breakup.",
-    "AMD": "AMD appointed Tim Ryan to its board and named a new audit committee chair.",
-    "NUE": "Nucor was pitched as a strong buy on tariff protection and infrastructure demand despite the day's drop.",
-    "CRM": "Salesforce headlines argue the market is underappreciating its agentic-AI strategy.",
-    "ACN": "Accenture faces bearish 'dead money' commentary weighed against its AI upside.",
-    "C": "Citi is set to launch institutional bitcoin custody later this year.",
-    "AEP": "Carl Icahn trimmed his AEP stake while Truist lowered its price target to $139."
+    "MRK": "Merck jumped on positive Merck/Moderna melanoma vaccine results plus a Morgan Stanley upgrade to Overweight.",
+    "NEM": "Newmont rallied as gold surged toward record highs.",
+    "NOW": "ServiceNow is being framed as a clear AI winner with room for a Q3 beat.",
+    "CRM": "Salesforce drew an Oppenheimer Outperform reiteration ahead of earnings amid debate over its agentic-AI strategy.",
+    "NUE": "Nucor fell despite a bullish tariff-shield and infrastructure-demand thesis.",
+    "GE": "GE Aerospace and Kratos landed a US Air Force contract as Nelson Peltz bets on both sides of GE's breakup.",
+    "AVGO": "Broadcom slid as Marvell muscled in on its key customer Google and analysts called semiconductors peaked.",
+    "TJX": "TJX posted another strong quarter on HomeGoods and international strength but shares fell on technical concerns.",
+    "INTC": "An analyst argued against buying the Intel dip.",
+    "C": "Citi said it will offer bitcoin custody for institutional clients later this year.",
+    "CHTR": "Liberty Broadband preferreds were flagged as a buy ahead of an upcoming conversion into Charter."
   },
   "articles": [
     {
-      "ticker": "AVGO",
-      "headline": "Broadcom Rival Marvell Surges After Google Strikes AI Chip Deal, Gets Option to Buy $12.2B Stake",
-      "source": "Benzinga",
-      "url": "https://finnhub.io/api/news?id=ee610846551e06b5814d7484d6a8749e30197f4ffe09530a339f56f4264a3b15",
-      "datetime": "2026-08-19T10:37:43"
+      "ticker": "MRK",
+      "headline": "Merck And Moderna's Melanoma Results",
+      "source": "SeekingAlpha",
+      "url": "https://finnhub.io/api/news?id=165a75973e927f5ee7ac0860bb27345b6c37d6d881bd329434f668c0f8cd6f45",
+      "datetime": "2026-08-20T07:15:00"
     },
     {
-      "ticker": "MRK",
-      "headline": "Merck, Moderna Cancer Vaccine Breakthrough Could Be Catalyst the mRNA ETF Trade Has Been Waiting For",
-      "source": "Benzinga",
-      "url": "https://finnhub.io/api/news?id=e659e73d22839029cea2173919dcf3b7ff288bcb4eeaab2bc415bc01a742d05d",
-      "datetime": "2026-08-19T17:49:08"
+      "ticker": null,
+      "headline": "U.S. government debt yields are surging at a bad time. Here's what's behind the move",
+      "source": "CNBC",
+      "url": "https://www.cnbc.com/2026/08/18/us-government-debt-yields-are-surging-at-a-bad-time-heres-whats-behind-the-move.html",
+      "datetime": "2026-08-18T17:26:34"
     },
     {
       "ticker": null,
@@ -216,24 +215,24 @@
     },
     {
       "ticker": null,
-      "headline": "UAE says Iran fired 2 missiles at country as war drags on",
-      "source": "Bloomberg",
-      "url": "https://www.bloomberg.com/news/articles/2026-08-18/uae-says-iran-fired-two-missiles-at-country-as-war-drags-on",
-      "datetime": "2026-08-19T03:53:11"
+      "headline": "Where we stand on Broadcom after Marvell muscles in on its key customer Google",
+      "source": "CNBC",
+      "url": "https://www.cnbc.com/2026/08/19/where-we-stand-on-broadcom-as-shares-dip-on-googles-deal-with-marvell.html",
+      "datetime": "2026-08-19T18:58:48"
     },
     {
       "ticker": null,
-      "headline": "U.S. government debt yields are surging at a bad time. Here's what's behind the move",
+      "headline": "Merck is a buy as strong cancer drug pipeline offsets Keytruda patent expiration, Morgan Stanley says",
       "source": "CNBC",
-      "url": "https://www.cnbc.com/2026/08/18/us-government-debt-yields-are-surging-at-a-bad-time-heres-whats-behind-the-move.html",
-      "datetime": "2026-08-18T17:26:34"
+      "url": "https://www.cnbc.com/2026/08/20/merck-is-finding-more-ways-to-boost-its-shares-morgan-stanley-says.html",
+      "datetime": "2026-08-20T12:00:49"
     },
     {
-      "ticker": "TJX",
-      "headline": "TJX Companies Sees Q3 Adj EPS $1.30-$1.32 vs $1.34 Est",
-      "source": "Benzinga",
-      "url": "https://finnhub.io/api/news?id=247a62b58739d69f33824ff82903d3f7437921d4ac7f4562b02befaf0aa54fed",
-      "datetime": "2026-08-19T07:33:11"
+      "ticker": "AVGO",
+      "headline": "Marvell: The Deal And The Dilution Are Both Real",
+      "source": "SeekingAlpha",
+      "url": "https://finnhub.io/api/news?id=b5fbd015aa9fe59291856988109e96ec2f864c527b3f49ec724d7fc320554a99",
+      "datetime": "2026-08-20T08:23:58"
     },
     {
       "ticker": "NEM",
@@ -250,18 +249,25 @@
       "datetime": "2026-08-19T04:47:32"
     },
     {
-      "ticker": "GE",
-      "headline": "GE Aerospace, Kratos Land US Air Force Contract",
-      "source": "Benzinga",
-      "url": "https://finnhub.io/api/news?id=aa13fa2b54b5d9459f3d0577f68ef10283cdaece03e8e0cf5b8d3103818796e7",
-      "datetime": "2026-08-17T09:33:25"
+      "ticker": "CRM",
+      "headline": "Salesforce: The Market Is Not Understanding Its Agentic AI Strategy",
+      "source": "SeekingAlpha",
+      "url": "https://finnhub.io/api/news?id=e094f4704782523202940de08014e1ba9161bdc01cbae8a434ac65e3294dfd90",
+      "datetime": "2026-08-19T08:05:39"
     },
     {
-      "ticker": "AVGO",
-      "headline": "I Changed My Mind, Broadcom And Semiconductors Have Peaked For Now",
+      "ticker": "TJX",
+      "headline": "TJX Companies: Strength In HomeGoods, Canada, And International As MarMaxx Lags",
       "source": "SeekingAlpha",
-      "url": "https://finnhub.io/api/news?id=d38500d4868d52a784ea3876ea29bcfc5b7e7e37c6033d2830182a9a8390dc86",
-      "datetime": "2026-08-19T15:09:10"
+      "url": "https://finnhub.io/api/news?id=71208b1ced7cb8ea20e798d17676e343704e71fc53e3e9d7b9bbd2ea2ee1c349",
+      "datetime": "2026-08-20T05:59:48"
+    },
+    {
+      "ticker": null,
+      "headline": "Novo Nordisk tests low-dose Wegovy pill in new weight-loss study",
+      "source": "Bloomberg",
+      "url": "https://www.bloomberg.com/news/articles/2026-08-19/novo-starts-testing-low-dose-wegovy-pills-in-new-obesity-study",
+      "datetime": "2026-08-19T10:10:12"
     },
     {
       "ticker": null,
@@ -271,25 +277,25 @@
       "datetime": "2026-08-19T04:06:16"
     },
     {
-      "ticker": "NUE",
-      "headline": "Nucor: Tariff Shield, Rising Capacity, And Infrastructure Demand Merit A Strong Buy",
+      "ticker": "INTC",
+      "headline": "Intel: Why I Am Not Buying The Dip",
       "source": "SeekingAlpha",
-      "url": "https://finnhub.io/api/news?id=11a6b048a1c611753583aa5cca166350e872f7e17193b730c4cc1d7be4195ffd",
-      "datetime": "2026-08-18T12:05:02"
+      "url": "https://finnhub.io/api/news?id=989a721f431e07fffef2d3f9c914422cbce089c165f3e696f7dfd3da07e53fe4",
+      "datetime": "2026-08-20T06:00:15"
     },
     {
-      "ticker": "NOW",
-      "headline": "Semiconductors Are Collapsing While ServiceNow May Be Bottoming (Rating Downgrade)",
-      "source": "SeekingAlpha",
-      "url": "https://finnhub.io/api/news?id=2ce5cf60d26bd60d45145c15318b980956a407b77e99e4ef79544d204d12ba79",
-      "datetime": "2026-08-19T08:18:15"
+      "ticker": "GE",
+      "headline": "GE Aerospace, Kratos Land US Air Force Contract",
+      "source": "Benzinga",
+      "url": "https://finnhub.io/api/news?id=aa13fa2b54b5d9459f3d0577f68ef10283cdaece03e8e0cf5b8d3103818796e7",
+      "datetime": "2026-08-17T09:33:25"
     },
     {
-      "ticker": "CRM",
-      "headline": "Salesforce: The Market Is Not Understanding Its Agentic AI Strategy",
-      "source": "SeekingAlpha",
-      "url": "https://finnhub.io/api/news?id=e094f4704782523202940de08014e1ba9161bdc01cbae8a434ac65e3294dfd90",
-      "datetime": "2026-08-19T08:05:39"
+      "ticker": null,
+      "headline": "Deere earnings beat estimates as construction demand offsets farm slump (DE:NYSE)",
+      "source": "Seeking Alpha",
+      "url": "https://seekingalpha.com/news/4635331-deere-earnings-beat-estimates-as-construction-demand-offsets-farm-slump",
+      "datetime": "2026-08-20T11:12:39"
     },
     {
       "ticker": "C",
@@ -297,37 +303,30 @@
       "source": "Benzinga",
       "url": "https://finnhub.io/api/news?id=12c44fd73b7d884d7e582aff3f1713c42eb6ef97219bf8ad8f533864b40f9b40",
       "datetime": "2026-08-18T13:59:24"
-    },
-    {
-      "ticker": "NEM",
-      "headline": "Moderna Doubles, Gold Rallies To $4,500 As Dollar Sinks: Stock Market Today",
-      "source": "Benzinga",
-      "url": "https://finnhub.io/api/news?id=85516d8c008355770031d63deb6a804ab3ae2903871b25ce3955544dea3beff6",
-      "datetime": "2026-08-19T13:10:27"
     }
   ],
   "watchlist_articles": {
     "SPY": [
       {
         "ticker": "SPY",
-        "headline": "How Much Is AI Contributing To U.S. Economic Growth?",
+        "headline": "The Scarcity Trade At The Heart Of Photonics",
         "source": "SeekingAlpha",
-        "url": "https://finnhub.io/api/news?id=5f1b9c619e45c9364ec953b6445e4a14da3ba8f34c1a2aed67c73a5ce93c5783",
-        "datetime": "2026-08-19T23:30:00"
+        "url": "https://finnhub.io/api/news?id=d5b1065225b1af8c1852faf984bc180abaab393385b5dae7dc9e25a7e258fb89",
+        "datetime": "2026-08-20T08:03:25"
       },
       {
         "ticker": "SPY",
-        "headline": "2 ETFs For The Watchlist With 8%+ Yields",
+        "headline": "Institutions Are Buying Real Estate Blind",
         "source": "SeekingAlpha",
-        "url": "https://finnhub.io/api/news?id=329e95a2edb420720cc9ac17105646a6f26a6c7b1d11e5957bab1ac81f0c48ce",
-        "datetime": "2026-08-19T22:24:05"
+        "url": "https://finnhub.io/api/news?id=2ee6b67a9adbc2e5b6a4d0531487154b45a7e6addf1f86cd1ac12a7e16c8a59e",
+        "datetime": "2026-08-20T08:00:00"
       },
       {
         "ticker": "SPY",
-        "headline": "Fed Minutes Lean Hawkish, But We Don't Expect A Hike",
+        "headline": "The U.S. Treasury Likely Just Launched A Major Market Shift",
         "source": "SeekingAlpha",
-        "url": "https://finnhub.io/api/news?id=800e517be0170b4ad82026577d4806756447aeb4c723a5eb60f799a5288a24c2",
-        "datetime": "2026-08-19T20:45:00"
+        "url": "https://finnhub.io/api/news?id=41683b928e2bd0f7e90ec14f641f2bf3366b33124c0c8ab461fda339b63c8eb1",
+        "datetime": "2026-08-20T07:05:00"
       }
     ],
     "VGT": [
@@ -342,47 +341,47 @@
     "QQQ": [
       {
         "ticker": "QQQ",
-        "headline": "How Much Is AI Contributing To U.S. Economic Growth?",
+        "headline": "JEPQ: Still Neutral As The Opportunity Cost Continues To Add Up",
         "source": "SeekingAlpha",
-        "url": "https://finnhub.io/api/news?id=5f1b9c619e45c9364ec953b6445e4a14da3ba8f34c1a2aed67c73a5ce93c5783",
-        "datetime": "2026-08-19T23:30:00"
+        "url": "https://finnhub.io/api/news?id=67b850635bc3297bbfe9766fadbc570c0a36ef56ceaaeeda81de5c3fc76ed5d0",
+        "datetime": "2026-08-20T08:30:00"
       },
       {
         "ticker": "QQQ",
-        "headline": "Fed Minutes Lean Hawkish, But We Don't Expect A Hike",
+        "headline": "STK: This Tech CEF Is Crushing QQQ, And Is Still Trading At A Discount",
         "source": "SeekingAlpha",
-        "url": "https://finnhub.io/api/news?id=800e517be0170b4ad82026577d4806756447aeb4c723a5eb60f799a5288a24c2",
-        "datetime": "2026-08-19T20:45:00"
+        "url": "https://finnhub.io/api/news?id=0fd7e7921808e2747642338ced2fa5bcfb686c2ffb68291d8d14b36030449a9b",
+        "datetime": "2026-08-20T08:08:58"
       },
       {
         "ticker": "QQQ",
-        "headline": "Moderna Doubles, Gold Rallies To $4,500 As Dollar Sinks: Stock Market Today",
-        "source": "Benzinga",
-        "url": "https://finnhub.io/api/news?id=85516d8c008355770031d63deb6a804ab3ae2903871b25ce3955544dea3beff6",
-        "datetime": "2026-08-19T13:10:27"
+        "headline": "The Scarcity Trade At The Heart Of Photonics",
+        "source": "SeekingAlpha",
+        "url": "https://finnhub.io/api/news?id=d5b1065225b1af8c1852faf984bc180abaab393385b5dae7dc9e25a7e258fb89",
+        "datetime": "2026-08-20T08:03:25"
       }
     ],
     "AAPL": [
+      {
+        "ticker": "AAPL",
+        "headline": "Apple: iPhone's Winning Strategy Could Outlast The AI Wars",
+        "source": "SeekingAlpha",
+        "url": "https://finnhub.io/api/news?id=0bfe446a6118cb7b323e175667c05e0edddb2e43611f34e2fff12a49655670f1",
+        "datetime": "2026-08-20T09:00:00"
+      },
+      {
+        "ticker": "AAPL",
+        "headline": "Wall Street Breakfast Podcast: Moderna's $44B Booster",
+        "source": "SeekingAlpha",
+        "url": "https://finnhub.io/api/news?id=0fdd570409b9dec915804346a3cc51c0a36a85be17abe6e9713303e5262a3774",
+        "datetime": "2026-08-20T07:02:03"
+      },
       {
         "ticker": "AAPL",
         "headline": "Meta: The Drawdown Is An Opportunity",
         "source": "SeekingAlpha",
         "url": "https://finnhub.io/api/news?id=313505ed8bed4fc195d60a2aa914adc4d0273afec20216bdf86ef3c7d38b2052",
         "datetime": "2026-08-19T23:40:06"
-      },
-      {
-        "ticker": "AAPL",
-        "headline": "What's going on in today's session: S&P500 most active stocks",
-        "source": "ChartMill",
-        "url": "https://finnhub.io/api/news?id=06bc9619bf53a11a041c1a94ae5eb97fa03663fcef161e2b5f6c6836998b06d4",
-        "datetime": "2026-08-19T18:05:02"
-      },
-      {
-        "ticker": "AAPL",
-        "headline": "These dow jones stocks are moving in today's session",
-        "source": "ChartMill",
-        "url": "https://finnhub.io/api/news?id=a53cd1f5883972a76c50bbb639d04690497dfa9d3cc4c64befd2cd557bc9cbf6",
-        "datetime": "2026-08-19T16:40:06"
       }
     ],
     "MSFT": [
@@ -411,24 +410,24 @@
     "NVDA": [
       {
         "ticker": "NVDA",
+        "headline": "Nvidia FQ2 Preview: I'm Seeing A 50%+ FCF Discount",
+        "source": "SeekingAlpha",
+        "url": "https://finnhub.io/api/news?id=b77380b3f8123ad2ebbb78612bce447fe5a9fecb805b09a4d0898abf53ad90f8",
+        "datetime": "2026-08-20T08:45:38"
+      },
+      {
+        "ticker": "NVDA",
+        "headline": "Investing In The Building Blocks Of The Humanoid Revolution - Part 2 (The Brain)",
+        "source": "SeekingAlpha",
+        "url": "https://finnhub.io/api/news?id=27169b49a8a67e1d061d882987a133367971362d000faef12ba8ecd56b2edb02",
+        "datetime": "2026-08-20T02:20:00"
+      },
+      {
+        "ticker": "NVDA",
         "headline": "Which dow jones stocks are moving on Wednesday?",
         "source": "ChartMill",
         "url": "https://finnhub.io/api/news?id=40115c3c3464e83a2660ead2dc4dec4295ca940e8503f339c0e49581f3b5cef4",
         "datetime": "2026-08-19T19:10:05"
-      },
-      {
-        "ticker": "NVDA",
-        "headline": "What's going on in today's session: S&P500 most active stocks",
-        "source": "ChartMill",
-        "url": "https://finnhub.io/api/news?id=06bc9619bf53a11a041c1a94ae5eb97fa03663fcef161e2b5f6c6836998b06d4",
-        "datetime": "2026-08-19T18:05:02"
-      },
-      {
-        "ticker": "NVDA",
-        "headline": "Which stocks are most active on Wednesday?",
-        "source": "ChartMill",
-        "url": "https://finnhub.io/api/news?id=709907e313da67eb9297d61718e239cfbac798b8fcaa3222f3077e4bb4eb234f",
-        "datetime": "2026-08-19T18:00:00"
       }
     ],
     "TSLA": [
@@ -480,24 +479,47 @@
     "GOOGL": [
       {
         "ticker": "GOOGL",
+        "headline": "Marvell: The Deal And The Dilution Are Both Real",
+        "source": "SeekingAlpha",
+        "url": "https://finnhub.io/api/news?id=b5fbd015aa9fe59291856988109e96ec2f864c527b3f49ec724d7fc320554a99",
+        "datetime": "2026-08-20T08:23:58"
+      },
+      {
+        "ticker": "GOOGL",
+        "headline": "Moderna Doubles on Melanoma Vaccine Win, Treasury Steps In to Cap Long-End Yields",
+        "source": "ChartMill",
+        "url": "https://finnhub.io/api/news?id=508d178665ed408c01403249081d5127f914ba13062aa866c375984e312e5d86",
+        "datetime": "2026-08-20T07:11:14"
+      },
+      {
+        "ticker": "GOOGL",
         "headline": "Harry Qelm Baabsman's 2026 Half-Year Letter To Investors",
         "source": "SeekingAlpha",
         "url": "https://finnhub.io/api/news?id=a5aec2a565933f017eebe10cb4892d3023a83d60b2201ae7b78504bf0fdde8c6",
         "datetime": "2026-08-19T21:21:28"
-      },
+      }
+    ],
+    "META": [
       {
-        "ticker": "GOOGL",
-        "headline": "Dividing Our Idea Funnel: Four Moves That Are Nicely Spread",
+        "ticker": "META",
+        "headline": "Meta Platforms: H2 2026 May Disappoint - Value Trap Risks Meet Rich Rebound Prospects",
         "source": "SeekingAlpha",
-        "url": "https://finnhub.io/api/news?id=f0afead6a1d585e01506cfd820a7e4f00c744ae1d815bb858f5a273d3a4cb534",
-        "datetime": "2026-08-19T21:05:00"
+        "url": "https://finnhub.io/api/news?id=8d5c160a2aa798312698cd93a58e5af7b0418e87757a159bb2f98d284d9e2924",
+        "datetime": "2026-08-20T06:00:11"
       },
       {
-        "ticker": "GOOGL",
-        "headline": "Which dow jones stocks are moving on Wednesday?",
-        "source": "ChartMill",
-        "url": "https://finnhub.io/api/news?id=40115c3c3464e83a2660ead2dc4dec4295ca940e8503f339c0e49581f3b5cef4",
-        "datetime": "2026-08-19T19:10:05"
+        "ticker": "META",
+        "headline": "Meta: The Drawdown Is An Opportunity",
+        "source": "SeekingAlpha",
+        "url": "https://finnhub.io/api/news?id=313505ed8bed4fc195d60a2aa914adc4d0273afec20216bdf86ef3c7d38b2052",
+        "datetime": "2026-08-19T23:40:06"
+      },
+      {
+        "ticker": "META",
+        "headline": "Enbridge: Buy The 5.5% Yield And Growing Backlog",
+        "source": "SeekingAlpha",
+        "url": "https://finnhub.io/api/news?id=98f73a19a15622c76be65cf92568cd2548ca54c63572c2e22909676901a361a7",
+        "datetime": "2026-08-19T13:34:00"
       }
     ],
     "MU": [
@@ -596,6 +618,13 @@
     "OUST": [
       {
         "ticker": "OUST",
+        "headline": "Investing In The Building Blocks Of The Humanoid Revolution - Part 2 (The Brain)",
+        "source": "SeekingAlpha",
+        "url": "https://finnhub.io/api/news?id=27169b49a8a67e1d061d882987a133367971362d000faef12ba8ecd56b2edb02",
+        "datetime": "2026-08-20T02:20:00"
+      },
+      {
+        "ticker": "OUST",
         "headline": "What's Going On With Ouster Stock Wednesday?",
         "source": "Benzinga",
         "url": "https://finnhub.io/api/news?id=2b02350d1d78b10e2767947f9b538362c6e4c0f6ee69c5e1f1380fe94b25b3a8",
@@ -612,6 +641,13 @@
     "AMD": [
       {
         "ticker": "AMD",
+        "headline": "Nvidia FQ2 Preview: I'm Seeing A 50%+ FCF Discount",
+        "source": "SeekingAlpha",
+        "url": "https://finnhub.io/api/news?id=b77380b3f8123ad2ebbb78612bce447fe5a9fecb805b09a4d0898abf53ad90f8",
+        "datetime": "2026-08-20T08:45:38"
+      },
+      {
+        "ticker": "AMD",
         "headline": "Tracking Cathie Wood's ARK Invest 13F Portfolio - Q2 2026 Update",
         "source": "SeekingAlpha",
         "url": "https://finnhub.io/api/news?id=6176cf1f3006a9b7f1e7eece33e01b74901f7d28aa6591f2ed6baa2cc5a017ee",
@@ -623,13 +659,6 @@
         "source": "Benzinga",
         "url": "https://finnhub.io/api/news?id=da69e4b6f7750cb1bbe806db07447d752ca772be9efc07c6e091723c8a097974",
         "datetime": "2026-08-19T16:20:52"
-      },
-      {
-        "ticker": "AMD",
-        "headline": "Here\u2019s How Much You Would Have Made Owning Advanced Micro Devices Stock In The Last 15 Years",
-        "source": "Benzinga",
-        "url": "https://finnhub.io/api/news?id=eaf0d768a3465293908200bb1b4b2a401dd585245413a1c76954517dc12f6e22",
-        "datetime": "2026-08-19T16:15:41"
       }
     ],
     "RKLB": [
@@ -681,24 +710,24 @@
     "MRVL": [
       {
         "ticker": "MRVL",
-        "headline": "Exploring the top movers within the S&P500 index during today's session.",
+        "headline": "These S&P500 stocks that are showing activity before the opening bell on Thursday.",
         "source": "ChartMill",
-        "url": "https://finnhub.io/api/news?id=e46427aae39604591751787a13c6e26e654e9b8fcdfef2fc617183f68f47e48f",
-        "datetime": "2026-08-19T19:05:01"
+        "url": "https://finnhub.io/api/news?id=710c4f6ba1bc6547fe0bdb24de23d157524b5f38b704e2396156c75b4c0b5bc2",
+        "datetime": "2026-08-20T12:35:01"
       },
       {
         "ticker": "MRVL",
-        "headline": "What's going on in today's session: S&P500 most active stocks",
-        "source": "ChartMill",
-        "url": "https://finnhub.io/api/news?id=06bc9619bf53a11a041c1a94ae5eb97fa03663fcef161e2b5f6c6836998b06d4",
-        "datetime": "2026-08-19T18:05:02"
+        "headline": "Marvell Q2 Preview: Marveling Momentum, High Expectations, Shares A 'Hold'",
+        "source": "SeekingAlpha",
+        "url": "https://finnhub.io/api/news?id=ed36d6b2c2698a7d4c7d94ca7e5a0f0948cc7755fb8514d196d8a012bac07014",
+        "datetime": "2026-08-20T08:42:30"
       },
       {
         "ticker": "MRVL",
-        "headline": "What's going on in today's session: S&P500 movers",
-        "source": "ChartMill",
-        "url": "https://finnhub.io/api/news?id=9d113a09f48670d436e6f2252bf1887b5a026dfadda5e1b78c4e9f01efe715bf",
-        "datetime": "2026-08-19T16:35:01"
+        "headline": "Marvell: The Deal And The Dilution Are Both Real",
+        "source": "SeekingAlpha",
+        "url": "https://finnhub.io/api/news?id=b5fbd015aa9fe59291856988109e96ec2f864c527b3f49ec724d7fc320554a99",
+        "datetime": "2026-08-20T08:23:58"
       }
     ]
   }
