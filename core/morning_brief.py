@@ -197,14 +197,20 @@ async def _synthesize(payload: str) -> tuple[dict, float | None]:
         "it has no material news rather than inventing filler.\n"
         "  - `top_articles`: an array of the bracketed ids (integers) of the "
         "most material headlines across BOTH the macro and per-ticker "
-        "sections combined, ranked most-material first. Pick as many as "
-        "genuinely matter — up to 18 — but fewer if fewer are truly "
-        "material; never pad to hit a count. SKIP any headline whose source "
-        "is Reuters — it requires a paid subscription to read, so it must "
-        "never be picked here even if it's the most material story; choose "
-        "the next-best non-Reuters headline covering that story instead. "
-        "Reuters headlines are still fair game for `macro_bullets`/`internals`/"
-        "`tickers` prose above, just never as a `top_articles` id.\n"
+        "sections combined, ranked most-material first. You are given far "
+        "more headlines than you need, so aim for AT LEAST 10 — go below 10 "
+        "only if the fetched headlines genuinely don't contain that many "
+        "distinct material stories, which should be rare. Up to 20. Never "
+        "pad with filler/duplicates just to hit a count, but do not "
+        "under-pick either when there is clearly enough real material. SKIP "
+        "any headline whose source is Reuters — it requires a paid "
+        "subscription to read, so it must never be picked here even if it's "
+        "the most material story; choose the next-best non-Reuters headline "
+        "covering that story instead (this is exactly why you're given more "
+        "headlines than the 10-20 you'll pick — there's room to skip past "
+        "Reuters and still hit the floor). Reuters headlines are still fair "
+        "game for `macro_bullets`/`internals`/`tickers` prose above, just "
+        "never as a `top_articles` id.\n"
         "Reply with ONLY a JSON object with keys `macro_bullets`, `internals`, "
         "`tickers`, `top_articles`. No prose, no code fence."
     )
@@ -322,7 +328,7 @@ def synthesize_brief(market_news: pd.DataFrame, internals: dict,
         seen_ids.add(article_id)
         articles.append(record)
 
-    return narrative, cost or 0.0, articles[:15]
+    return narrative, cost or 0.0, articles[:20]
 
 
 def build_morning_brief(panel: pd.DataFrame, as_of=None) -> tuple[dict, float]:
@@ -336,7 +342,11 @@ def build_morning_brief(panel: pd.DataFrame, as_of=None) -> tuple[dict, float]:
 
     industry_map = config.industry_map()
     internals = market_internals(panel, industry_map)
-    market_news = fetch_market_news()
+    # Reuters dominates Finnhub's general-news feed in practice, and all of
+    # it gets skipped for top_articles (see _synthesize's system prompt) —
+    # a wider raw pull gives the LLM enough non-Reuters alternatives left to
+    # still clear the 10-article floor.
+    market_news = fetch_market_news(max_articles=50)
     brief_tickers = select_brief_tickers(internals, industry_map)
     ticker_headlines = fetch_ticker_briefs(brief_tickers, as_of=as_of)
 

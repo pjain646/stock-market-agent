@@ -500,10 +500,10 @@ def render_story_group(articles: list[dict], moves: dict[str, float] | None = No
 
 def render_watchlist(tickers: list[str], articles_by_ticker: dict[str, list[dict]],
                      prices: dict[str, dict] | None = None, dark: bool = False) -> str:
-    """Grid of watch-list ticker cards: opening price (only once fetched via
-    the on-demand refresh button — see the "Refresh opening prices" button
-    at the call site, since the daily pipeline runs pre-market and can't
-    know today's open at generation time) plus that ticker's guaranteed news
+    """Grid of watch-list ticker cards: latest price (only once fetched via
+    the on-demand "Refresh latest prices" button at the call site, since the
+    daily pipeline runs pre-market and can't know a current price at
+    generation time) plus that ticker's guaranteed news
     (`core/morning_brief.py`'s `build_watchlist_articles`, never LLM-rationed
     the way the general Top stories feed is)."""
     prices = prices or {}
@@ -512,12 +512,12 @@ def render_watchlist(tickers: list[str], articles_by_ticker: dict[str, list[dict
         price_info = prices.get(ticker)
         if price_info:
             price_html = (f'<span class="sc-value" style="font-size:1.05rem;">'
-                          f'${price_info["open"]:.2f}</span>'
+                          f'${price_info["price"]:.2f}</span>'
                           f'<div class="sc-sub" style="margin-top:0;">'
-                          f'{"today\'s open" if price_info["is_today"] else "open " + price_info["date"]}'
+                          f'{"latest" if price_info["is_today"] else "as of " + price_info["date"]}'
                           f'</div>')
         else:
-            price_html = f'<span class="sc-sub">Click refresh for today\'s open</span>'
+            price_html = f'<span class="sc-sub">Click refresh for the latest price</span>'
 
         headline_rows = []
         for article in articles_by_ticker.get(ticker, []):
@@ -905,17 +905,24 @@ if active_tab == "Morning brief":
         # core/morning_brief.py's build_watchlist_articles), shown first
         # since this is the highest-priority content on the page. Price is
         # deliberately NOT part of the daily-generated data: the pipeline
-        # runs pre-market (~7:30am Central), before today's open exists, so
-        # anything baked in at generation time would either be missing or
-        # silently stale (the same trap the Finnhub-freshness investigation
-        # surfaced earlier). Instead price is fetched live, on demand, only
-        # when this button is clicked — which is whenever Preyansh is
-        # actually looking, so the market may well be open by then.
+        # runs pre-market (~7:30am Central), before there's a current price
+        # to show at all, so anything baked in at generation time would
+        # either be missing or silently stale (the same trap the
+        # Finnhub-freshness investigation surfaced earlier). Instead price
+        # is fetched live, on demand, only when this button is clicked —
+        # which is whenever Preyansh is actually looking.
+        #
+        # "Latest" here means the most recent close yfinance has — for
+        # today's still-open session that field updates continuously
+        # through the day (Yahoo keeps "today"'s daily-bar Close current
+        # intraday), so this is the closest thing to a live price without
+        # standing up a real-time feed/websocket. See the Aug-19 chat about
+        # why true tick-by-tick "live" isn't realistic on this stack.
         st.markdown('<div class="sc-label" style="margin-top:.2rem">Watch list</div>',
                     unsafe_allow_html=True)
         button_col, caption_col = st.columns([1, 3])
-        if button_col.button("Refresh opening prices", key="refresh_watchlist_prices"):
-            with st.spinner("Fetching today's open ..."):
+        if button_col.button("Refresh latest prices", key="refresh_watchlist_prices"):
+            with st.spinner("Fetching latest prices ..."):
                 try:
                     import yfinance as yf
 
@@ -928,12 +935,12 @@ if active_tab == "Morning brief":
                     fetched_prices = {}
                     for ticker in watch_tickers:
                         try:
-                            series = raw_prices[ticker].dropna(subset=["Open"])
+                            series = raw_prices[ticker].dropna(subset=["Close"])
                             if series.empty:
                                 continue
                             last_date = series.index[-1].normalize()
                             fetched_prices[ticker] = {
-                                "open": float(series.iloc[-1]["Open"]),
+                                "price": float(series.iloc[-1]["Close"]),
                                 "date": last_date.strftime("%Y-%m-%d"),
                                 "is_today": last_date == today_date,
                             }
@@ -946,8 +953,8 @@ if active_tab == "Morning brief":
         caption_col.markdown(
             f'<p style="color:{ZINC["500"]}; font-size:.78rem; padding-top:.5rem;">'
             "Prices aren't in the daily-generated brief — the pipeline runs before the "
-            "market opens, so there'd be nothing real to show yet. Click refresh once "
-            "the market's open for today's actual print.</p>",
+            "market opens, so there'd be nothing real to show yet. Click refresh for "
+            "the latest available price.</p>",
             unsafe_allow_html=True)
         if st.session_state.get("watchlist_prices_error"):
             st.warning(f"Could not fetch prices: {st.session_state['watchlist_prices_error']}")
