@@ -152,9 +152,11 @@ def fetch_ticker_briefs(tickers: list[str], as_of=None,
                                max_articles=5)
         for ticker in tickers
     }
+    finnhub_total = sum(len(df) for df in finnhub_by_ticker.values())
     av_all = fetch_alpha_vantage_company_news(tickers)
 
     merged: dict[str, pd.DataFrame] = {}
+    merged_total = 0
     for ticker in tickers:
         parts = [finnhub_by_ticker[ticker]]
         if not av_all.empty:
@@ -165,6 +167,9 @@ def fetch_ticker_briefs(tickers: list[str], as_of=None,
                        .sort_values("datetime", ascending=False)
                        .reset_index(drop=True))
         merged[ticker] = combined
+        merged_total += len(combined)
+    print(f"  ticker news pool ({len(tickers)} tickers): {finnhub_total} Finnhub + "
+          f"{len(av_all)} Alpha Vantage -> {merged_total} after url-dedup")
     return merged
 
 
@@ -373,29 +378,41 @@ def build_morning_brief(panel: pd.DataFrame, as_of=None) -> tuple[dict, float]:
     sys.path.insert(0, str(PROJECT_ROOT / "research-methodology" / "scripts"))
     from data import fetch_alpha_vantage_market_news, fetch_market_news
 
+    from .timing import timed
+
     industry_map = config.industry_map()
-    internals = market_internals(panel, industry_map)
-    # Reuters dominates Finnhub's general-news feed in practice, and all of
-    # it gets skipped for top_articles (see _synthesize's system prompt) —
-    # a wider raw pull gives the LLM enough non-Reuters alternatives left to
-    # still clear the 10-article floor.
-    market_news = fetch_market_news(max_articles=50)
-    # Alpha Vantage's general-market feed merged in as a second, differently-
-    # sourced pool (zero Reuters in practice) — degrades silently to
-    # Finnhub-only if AV has no key or is down, since that function never
-    # raises.
-    av_market_news = fetch_alpha_vantage_market_news()
+    with timed("market_internals (pandas, no network)"):
+        internals = market_internals(panel, industry_map)
+
+    with timed("fetch_market_news (Finnhub)"):
+        # Reuters dominates Finnhub's general-news feed in practice, and all
+        # of it gets skipped for top_articles (see _synthesize's system
+        # prompt) — a wider raw pull gives the LLM enough non-Reuters
+        # alternatives left to still clear the 10-article floor.
+        market_news = fetch_market_news(max_articles=50)
+    finnhub_market_count = len(market_news)
+    with timed("fetch_alpha_vantage_market_news"):
+        # Merged in as a second, differently-sourced pool (zero Reuters in
+        # practice) — degrades silently to Finnhub-only if AV has no key or
+        # is down, since that function never raises.
+        av_market_news = fetch_alpha_vantage_market_news()
     if not av_market_news.empty:
         market_news = (pd.concat([market_news, av_market_news], ignore_index=True)
                        .drop_duplicates(subset=["url"])
                        .sort_values("datetime", ascending=False)
                        .reset_index(drop=True))
+    print(f"  macro news pool: {finnhub_market_count} Finnhub + {len(av_market_news)} Alpha Vantage "
+          f"-> {len(market_news)} after url-dedup")
+
     brief_tickers = select_brief_tickers(internals, industry_map)
-    ticker_headlines = fetch_ticker_briefs(brief_tickers, as_of=as_of)
+    with timed(f"fetch_ticker_briefs — movers ({len(brief_tickers)} tickers, Finnhub+AV)"):
+        ticker_headlines = fetch_ticker_briefs(brief_tickers, as_of=as_of)
 
-    narrative, cost, articles = synthesize_brief(market_news, internals, ticker_headlines)
+    with timed("synthesize_brief (the one LLM call)"):
+        narrative, cost, articles = synthesize_brief(market_news, internals, ticker_headlines)
 
-    watchlist_articles = build_watchlist_articles(as_of=as_of)
+    with timed("build_watchlist_articles (Finnhub+AV, watch list tickers)"):
+        watchlist_articles = build_watchlist_articles(as_of=as_of)
     # Top stories is "what else is happening" — a watch-list name already
     # gets its own guaranteed section below, so drop it here rather than
     # showing it twice.

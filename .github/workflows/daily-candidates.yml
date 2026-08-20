@@ -68,4 +68,10 @@ jobs:
           SEC_CONTACT_EMAIL: ${{ secrets.SEC_CONTACT_EMAIL }}
           FINNHUB_API_KEY: ${{ secrets.FINNHUB_API_KEY }}
           CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          # Without this, Python block-buffers stdout when it isn't a TTY (true
+          # of every Actions runner), so print() calls can sit in a buffer and
+          # land in the log wildly out of true chronological order — this bit
+          # us investigating run timing: a "fetching N tickers" print appeared
+          # to fire AFTER warnings that came from inside that very fetch.
+          PYTHONUNBUFFERED: "1"
         run: python research_pipeline.py --rank-candidates --push
