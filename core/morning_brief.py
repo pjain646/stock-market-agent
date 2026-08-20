@@ -44,6 +44,7 @@ from __future__ import annotations
 
 import json
 import pathlib
+import re
 import sys
 
 import pandas as pd
@@ -173,6 +174,20 @@ def fetch_ticker_briefs(tickers: list[str], as_of=None,
     return merged
 
 
+def _mentions_ticker(text: str, ticker: str, aliases: list[str]) -> bool:
+    """True if `text` actually names this company, not just a symbol a news
+    API loosely tagged it with. Finnhub's and Alpha Vantage's per-ticker
+    endpoints both occasionally return an article that only mentions the
+    ticker in passing (a comparison piece, a "which stocks are moving"
+    roundup) — this catches the obvious mismatches cheaply, no extra API
+    call, by requiring the ticker's own symbol (whole word) or one of its
+    `config.WATCHLIST_ALIASES` names to appear in the text."""
+    text = text or ""
+    if re.search(rf"\b{re.escape(ticker)}\b", text, re.IGNORECASE):
+        return True
+    return any(alias.lower() in text.lower() for alias in aliases)
+
+
 def build_watchlist_articles(as_of=None, max_per_ticker: int = 3) -> dict[str, list[dict]]:
     """News for Preyansh's personal watch list (`config.WATCHLIST_*`).
 
@@ -196,12 +211,18 @@ def build_watchlist_articles(as_of=None, max_per_ticker: int = 3) -> dict[str, l
         if headlines.empty:
             articles_by_ticker[ticker] = []
             continue
+        aliases = config.WATCHLIST_ALIASES.get(ticker, [])
         records = [
             {"ticker": ticker, "headline": row.headline, "source": row.source,
              "url": row.url, "datetime": row.datetime.isoformat()}
             for row in headlines.sort_values("datetime", ascending=False).itertuples()
+            if _mentions_ticker(f"{row.headline} {getattr(row, 'summary', '')}", ticker, aliases)
         ]
         non_reuters = [r for r in records if "reuters" not in (r["source"] or "").lower()]
+        # No fallback to Reuters-only or off-topic records here if `records`
+        # itself is empty (unlike the non_reuters-vs-records fallback below)
+        # — an off-topic headline is worse than none, so an empty result
+        # after the relevance filter just means no headlines are shown.
         articles_by_ticker[ticker] = (non_reuters or records)[:max_per_ticker]
     return articles_by_ticker
 
@@ -380,7 +401,7 @@ def build_morning_brief(panel: pd.DataFrame, as_of=None) -> tuple[dict, float]:
 
     from .timing import timed
 
-    industry_map = config.industry_map()
+    industry_map = config.display_industry_map()
     with timed("market_internals (pandas, no network)"):
         internals = market_internals(panel, industry_map)
 
