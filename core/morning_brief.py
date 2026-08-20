@@ -7,16 +7,25 @@ Preyansh can form his own view independently of the model. It NEVER touches
 predicts here, only reports (spec §6: "no agent scores or predicts").
 
 Four tiers, deliberately not full-universe coverage every morning (cost
-control):
-  1. Macro/world — `fetch_market_news` (Finnhub's general-news endpoint, the
-     same provider/key already used for per-ticker sentiment, just a
-     different endpoint — no new vendor).
+control). Tiers 1 and 3 each merge in a SECOND, differently-sourced feed —
+Alpha Vantage's NEWS_SENTIMENT endpoint (`fetch_alpha_vantage_market_news`/
+`fetch_alpha_vantage_company_news`) — alongside Finnhub, for outlet
+diversity: Finnhub's general feed skews heavily Reuters (paywalled, filtered
+out of `top_articles`), and Alpha Vantage in practice carries essentially
+none. Not a new vendor either — `ALPHA_VANTAGE_API_KEY` was already wired up
+for the earnings fallback in `research-methodology/scripts/data.py`. Both AV
+functions degrade silently to "Finnhub only" on a missing key or an AV
+outage (they never raise), and stay within its 25-calls/day free tier by
+batching every ticker into ONE call rather than one call each.
+  1. Macro/world — `fetch_market_news` (Finnhub) + `fetch_alpha_vantage_market_news`.
   2. Market internals — `market_internals`, pure pandas over the price panel
      `research_pipeline.py` already fetches for candidate ranking. Zero new
      network calls.
   3. Ticker-level news — "everything that matters," not everything:
      `select_brief_tickers` picks the day's movers plus one name per industry
-     not already covered, then reuses `live_sentiment.fetch_headlines`.
+     not already covered, then `fetch_ticker_briefs` merges
+     `live_sentiment.fetch_headlines` (Finnhub) with
+     `fetch_alpha_vantage_company_news`.
   4. Watch list — `build_watchlist_articles`, guaranteed (not competitively
      curated) coverage for Preyansh's own tracked tickers (`config.WATCHLIST_*`),
      excluded from tier 3's output so a name isn't shown twice.
@@ -122,17 +131,41 @@ def select_brief_tickers(internals: dict, industry_map: dict[str, str],
 
 def fetch_ticker_briefs(tickers: list[str], as_of=None,
                         lookback_days: int = 3) -> dict[str, pd.DataFrame]:
-    """Recent headlines per ticker.
+    """Recent headlines per ticker, from Finnhub AND Alpha Vantage merged.
 
-    Reuses `live_sentiment.fetch_headlines` with a short lookback (a few
+    Finnhub via `live_sentiment.fetch_headlines`, short lookback (a few
     days) appropriate for "what happened before this morning," not the
     21-day rolling window `live_sentiment` uses for its sentiment score.
+
+    Alpha Vantage's `fetch_alpha_vantage_company_news` is merged in (deduped
+    by url) as a second, differently-sourced feed — ONE call covers every
+    ticker passed in here, never one call per ticker, since its free tier is
+    25 calls/day. A missing key or an AV outage degrades silently to
+    Finnhub-only (that function never raises), so this never fails BECAUSE
+    of the supplemental source.
     """
-    return {
+    sys.path.insert(0, str(PROJECT_ROOT / "research-methodology" / "scripts"))
+    from data import fetch_alpha_vantage_company_news
+
+    finnhub_by_ticker = {
         ticker: fetch_headlines(ticker, as_of=as_of, lookback_days=lookback_days,
                                max_articles=5)
         for ticker in tickers
     }
+    av_all = fetch_alpha_vantage_company_news(tickers)
+
+    merged: dict[str, pd.DataFrame] = {}
+    for ticker in tickers:
+        parts = [finnhub_by_ticker[ticker]]
+        if not av_all.empty:
+            parts.append(av_all[av_all["ticker"] == ticker])
+        combined = pd.concat(parts, ignore_index=True)
+        if not combined.empty:
+            combined = (combined.drop_duplicates(subset=["url"])
+                       .sort_values("datetime", ascending=False)
+                       .reset_index(drop=True))
+        merged[ticker] = combined
+    return merged
 
 
 def build_watchlist_articles(as_of=None, max_per_ticker: int = 3) -> dict[str, list[dict]]:
@@ -338,7 +371,7 @@ def build_morning_brief(panel: pd.DataFrame, as_of=None) -> tuple[dict, float]:
     needs. Never touches `predicted_up_probability` or the candidate ranking.
     """
     sys.path.insert(0, str(PROJECT_ROOT / "research-methodology" / "scripts"))
-    from data import fetch_market_news
+    from data import fetch_alpha_vantage_market_news, fetch_market_news
 
     industry_map = config.industry_map()
     internals = market_internals(panel, industry_map)
@@ -347,6 +380,16 @@ def build_morning_brief(panel: pd.DataFrame, as_of=None) -> tuple[dict, float]:
     # a wider raw pull gives the LLM enough non-Reuters alternatives left to
     # still clear the 10-article floor.
     market_news = fetch_market_news(max_articles=50)
+    # Alpha Vantage's general-market feed merged in as a second, differently-
+    # sourced pool (zero Reuters in practice) — degrades silently to
+    # Finnhub-only if AV has no key or is down, since that function never
+    # raises.
+    av_market_news = fetch_alpha_vantage_market_news()
+    if not av_market_news.empty:
+        market_news = (pd.concat([market_news, av_market_news], ignore_index=True)
+                       .drop_duplicates(subset=["url"])
+                       .sort_values("datetime", ascending=False)
+                       .reset_index(drop=True))
     brief_tickers = select_brief_tickers(internals, industry_map)
     ticker_headlines = fetch_ticker_briefs(brief_tickers, as_of=as_of)
 
