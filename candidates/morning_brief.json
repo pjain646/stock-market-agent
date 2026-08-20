@@ -1,13 +1,13 @@
 {
   "as_of": "2026-08-20",
   "macro_bullets": [
-    "Middle East tensions escalate as Iran keeps the Strait of Hormuz shut and UAE reports missile launches, keeping geopolitical risk front and center.",
-    "Oil sits near a four-week high and energy stocks hit records as hopes for a US-Iran deal fade.",
-    "US government bond yields are surging, pressuring tech and weighing on Wall Street.",
-    "Gold rallied to roughly $4,500 as the dollar sinks, lifting miners.",
-    "Marvell's new Google AI-chip deal is reshaping the semiconductor landscape at Broadcom's expense."
+    "US-Iran conflict escalates with the Strait of Hormuz shut and UAE reporting fresh Iranian missile launches, keeping geopolitical risk front and center.",
+    "Oil holds near multi-week highs on fading peace-deal hopes, driving energy stocks to record levels.",
+    "Surging long-dated US Treasury yields are pressuring tech and weighing on broad risk sentiment.",
+    "Gold hovers near record territory around $4,400-$4,500 as the dollar softens.",
+    "AI-infrastructure momentum continues, with Marvell's Google chip deal and Anthropic's pre-IPO credit facility topping $10 billion."
   ],
-  "internals_narrative": "Pharma (+2.6%) and Materials (+1.5%) led sectors while Financials (-1.0%) and Industrials (-1.3%) lagged, with MRK (+12.6%), NEM (+7.8%) and NOW (+6.5%) topping gainers against losers NUE (-5.8%), GE (-5.0%) and AVGO (-4.6%). The rotation favored pharma and gold-linked names over banks (C -3.5%, PNC -3.1%) and chips (INTC -4.0%, AMD -3.7%).",
+  "internals_narrative": "Pharma (+2.6%) leads sectors alongside Materials (+1.5%) and Consumer Staples (+1.3%), while Financials (-1.0%) and Industrials (-1.3%) lag; MRK (+12.6%) tops gainers on vaccine news and NUE (-5.8%) leads decliners.",
   "gainers": [
     {
       "ticker": "MRK",
@@ -179,27 +179,20 @@
     }
   ],
   "ticker_notes": {
-    "MRK": "Merck and Moderna's cancer vaccine breakthrough is being touted as a catalyst for the mRNA trade.",
-    "NEM": "Newmont rallied as gold surged toward $4,500.",
-    "NOW": "Analysts flag ServiceNow may be bottoming even as semiconductors collapse.",
-    "ACN": "Bearish and bullish takes clash over whether AI can save Accenture from becoming dead money.",
-    "CRM": "A bull argues the market is underestimating Salesforce's agentic AI strategy.",
-    "NUE": "Nucor slid despite a strong-buy thesis citing tariff protection and infrastructure demand.",
-    "GE": "GE Aerospace landed a US Air Force contract alongside Kratos amid scrutiny of defense payouts.",
-    "AVGO": "Broadcom fell after rival Marvell surged on a Google AI-chip deal that muscles in on a key customer.",
-    "TJX": "TJX dropped after guiding Q3 adjusted EPS below estimates.",
-    "INTC": "Chip names weighed on as TSMC's AI bottleneck hands Samsung pricing leverage.",
-    "AMD": "AMD named Tim Ryan to its board and reshuffled its audit committee.",
-    "C": "Citi plans to launch institutional bitcoin custody later this year."
+    "MRK": "Merck surges on a Merck-Moderna cancer vaccine breakthrough touted as a catalyst for the mRNA trade.",
+    "NEM": "Newmont rallies as gold pushes toward $4,500.",
+    "NOW": "ServiceNow draws a rating downgrade even as an analyst flags it may be bottoming versus collapsing semiconductors.",
+    "AVGO": "Broadcom slides as rival Marvell surges on a Google AI chip deal that includes an option to buy a $12.2B stake.",
+    "TJX": "TJX falls after guiding Q3 adjusted EPS of $1.30-$1.32, below the $1.34 estimate, despite another strong quarter.",
+    "INTC": "Intel is in focus amid reports TSMC's AI bottleneck hands Samsung a pricing opportunity.",
+    "AMD": "AMD appoints Tim Ryan to its board and names KC McClure audit committee chair.",
+    "NUE": "Nucor drops despite bullish 'strong buy' commentary citing tariff protection and infrastructure demand.",
+    "GE": "GE Aerospace and Kratos land a US Air Force contract, while Elizabeth Warren targets defense-contractor payouts.",
+    "C": "Citi plans to launch bitcoin custody for institutional clients later this year.",
+    "CRM": "Salesforce commentary argues the market misunderstands its agentic AI strategy.",
+    "ACN": "Accenture faces dueling analyst takes on whether AI is a threat or its savior."
   },
   "articles": [
-    {
-      "ticker": "AVGO",
-      "headline": "Broadcom Rival Marvell Surges After Google Strikes AI Chip Deal, Gets Option to Buy $12.2B Stake",
-      "source": "Benzinga",
-      "url": "https://finnhub.io/api/news?id=ee610846551e06b5814d7484d6a8749e30197f4ffe09530a339f56f4264a3b15",
-      "datetime": "2026-08-19T10:37:43"
-    },
     {
       "ticker": "MRK",
       "headline": "Merck, Moderna Cancer Vaccine Breakthrough Could Be Catalyst the mRNA ETF Trade Has Been Waiting For",
@@ -208,11 +201,11 @@
       "datetime": "2026-08-19T17:49:08"
     },
     {
-      "ticker": null,
-      "headline": "Where we stand on Broadcom after Marvell muscles in on its key customer Google",
-      "source": "CNBC",
-      "url": "https://www.cnbc.com/2026/08/19/where-we-stand-on-broadcom-as-shares-dip-on-googles-deal-with-marvell.html",
-      "datetime": "2026-08-19T18:58:48"
+      "ticker": "AVGO",
+      "headline": "Broadcom Rival Marvell Surges After Google Strikes AI Chip Deal, Gets Option to Buy $12.2B Stake",
+      "source": "Benzinga",
+      "url": "https://finnhub.io/api/news?id=ee610846551e06b5814d7484d6a8749e30197f4ffe09530a339f56f4264a3b15",
+      "datetime": "2026-08-19T10:37:43"
     },
     {
       "ticker": null,
@@ -229,11 +222,32 @@
       "datetime": "2026-08-19T04:09:16"
     },
     {
+      "ticker": null,
+      "headline": "UAE says Iran fired 2 missiles at country as war drags on",
+      "source": "Bloomberg",
+      "url": "https://www.bloomberg.com/news/articles/2026-08-18/uae-says-iran-fired-two-missiles-at-country-as-war-drags-on",
+      "datetime": "2026-08-19T03:53:11"
+    },
+    {
       "ticker": "TJX",
       "headline": "TJX Companies Sees Q3 Adj EPS $1.30-$1.32 vs $1.34 Est",
       "source": "Benzinga",
       "url": "https://finnhub.io/api/news?id=247a62b58739d69f33824ff82903d3f7437921d4ac7f4562b02befaf0aa54fed",
       "datetime": "2026-08-19T07:33:11"
+    },
+    {
+      "ticker": null,
+      "headline": "Gold edges below $4,400 as traders eye slump in long-dated bonds",
+      "source": "Bloomberg",
+      "url": "https://www.bloomberg.com/news/articles/2026-08-17/gold-holds-two-day-gain-on-reduced-rate-hike-expectations",
+      "datetime": "2026-08-19T04:47:32"
+    },
+    {
+      "ticker": null,
+      "headline": "Where we stand on Broadcom after Marvell muscles in on its key customer Google",
+      "source": "CNBC",
+      "url": "https://www.cnbc.com/2026/08/19/where-we-stand-on-broadcom-as-shares-dip-on-googles-deal-with-marvell.html",
+      "datetime": "2026-08-19T18:58:48"
     },
     {
       "ticker": "NEM",
@@ -243,25 +257,25 @@
       "datetime": "2026-08-19T13:10:27"
     },
     {
-      "ticker": "AVGO",
-      "headline": "I Changed My Mind, Broadcom And Semiconductors Have Peaked For Now",
+      "ticker": "INTC",
+      "headline": "Taiwan Semiconductor\u2019s AI Bottleneck Hands Samsung a Powerful Pricing Opportunity",
+      "source": "Benzinga",
+      "url": "https://finnhub.io/api/news?id=d3e68ad50cd62bb2eda41d53822a55b0ed049f85c81afb4a03b02db6193e0b92",
+      "datetime": "2026-08-19T10:01:22"
+    },
+    {
+      "ticker": null,
+      "headline": "Anthropic pre-IPO credit facility set to climb past $10 billion",
+      "source": "Bloomberg",
+      "url": "https://www.bloomberg.com/news/articles/2026-08-18/anthropic-pre-ipo-credit-facility-set-to-climb-past-10-billion",
+      "datetime": "2026-08-19T04:06:16"
+    },
+    {
+      "ticker": "NUE",
+      "headline": "Nucor: Tariff Shield, Rising Capacity, And Infrastructure Demand Merit A Strong Buy",
       "source": "SeekingAlpha",
-      "url": "https://finnhub.io/api/news?id=d38500d4868d52a784ea3876ea29bcfc5b7e7e37c6033d2830182a9a8390dc86",
-      "datetime": "2026-08-19T15:09:10"
-    },
-    {
-      "ticker": null,
-      "headline": "Equifax (EFX) Shares Skyrocket, What You Need To Know",
-      "source": "Yahoo Finance",
-      "url": "https://finance.yahoo.com/markets/stocks/articles/equifax-efx-shares-skyrocket-know-223002319.html",
-      "datetime": "2026-08-20T01:37:50"
-    },
-    {
-      "ticker": null,
-      "headline": "Phillips 66 (PSX) Is Up 7.4% After Wartime-Driven Margin Surge and New Midstream Contracts - What's Changed",
-      "source": "Simply Wall Street",
-      "url": "https://simplywall.st/stocks/us/energy/nyse-psx/phillips-66/news/phillips-66-psx-is-up-74-after-wartime-driven-margin-surge-a",
-      "datetime": "2026-08-20T02:41:06"
+      "url": "https://finnhub.io/api/news?id=11a6b048a1c611753583aa5cca166350e872f7e17193b730c4cc1d7be4195ffd",
+      "datetime": "2026-08-18T12:05:02"
     },
     {
       "ticker": "GE",
@@ -272,10 +286,17 @@
     },
     {
       "ticker": "AVGO",
-      "headline": "Marvell Is Very Risky Despite The New AI Deal With Alphabet",
+      "headline": "I Changed My Mind, Broadcom And Semiconductors Have Peaked For Now",
       "source": "SeekingAlpha",
-      "url": "https://finnhub.io/api/news?id=1fc826bb58c12a64eda93eedb38f7fef433fbd62aeeb51b0835e971898cc5918",
-      "datetime": "2026-08-19T14:15:12"
+      "url": "https://finnhub.io/api/news?id=d38500d4868d52a784ea3876ea29bcfc5b7e7e37c6033d2830182a9a8390dc86",
+      "datetime": "2026-08-19T15:09:10"
+    },
+    {
+      "ticker": "NEM",
+      "headline": "Why Newmont Mining Rallied Today",
+      "source": "Yahoo",
+      "url": "https://finnhub.io/api/news?id=5078e66d4c85e2f015eecb28bd5e13dc97cb68032566f54ac746b2f4734c7023",
+      "datetime": "2026-08-19T20:42:12"
     },
     {
       "ticker": "CRM",
@@ -286,24 +307,31 @@
     },
     {
       "ticker": null,
-      "headline": "Anthropic pre-IPO credit facility set to climb past $10 billion",
+      "headline": "Equifax (EFX) Shares Skyrocket, What You Need To Know",
+      "source": "Yahoo Finance",
+      "url": "https://finance.yahoo.com/markets/stocks/articles/equifax-efx-shares-skyrocket-know-223002319.html",
+      "datetime": "2026-08-20T01:37:50"
+    },
+    {
+      "ticker": null,
+      "headline": "OpenAI makes AI safety changes in wake of Hugging Face breach",
       "source": "Bloomberg",
-      "url": "https://www.bloomberg.com/news/articles/2026-08-18/anthropic-pre-ipo-credit-facility-set-to-climb-past-10-billion",
-      "datetime": "2026-08-19T04:06:16"
+      "url": "https://www.bloomberg.com/news/articles/2026-08-18/openai-makes-ai-safety-changes-in-wake-of-hugging-face-breach",
+      "datetime": "2026-08-19T04:17:18"
     },
     {
-      "ticker": "NEM",
-      "headline": "Why Newmont Mining Rallied Today",
-      "source": "Yahoo",
-      "url": "https://finnhub.io/api/news?id=5078e66d4c85e2f015eecb28bd5e13dc97cb68032566f54ac746b2f4734c7023",
-      "datetime": "2026-08-19T20:42:12"
+      "ticker": null,
+      "headline": "Phillips 66 (PSX) Is Up 7.4% After Wartime-Driven Margin Surge and New Midstream Contracts - What's Changed",
+      "source": "Simply Wall Street",
+      "url": "https://simplywall.st/stocks/us/energy/nyse-psx/phillips-66/news/phillips-66-psx-is-up-74-after-wartime-driven-margin-surge-a",
+      "datetime": "2026-08-20T02:41:06"
     },
     {
-      "ticker": "INTC",
-      "headline": "Taiwan Semiconductor\u2019s AI Bottleneck Hands Samsung a Powerful Pricing Opportunity",
+      "ticker": "C",
+      "headline": "Bitcoin Custody for Institutional Clients Is Coming to Citi Later This Year",
       "source": "Benzinga",
-      "url": "https://finnhub.io/api/news?id=d3e68ad50cd62bb2eda41d53822a55b0ed049f85c81afb4a03b02db6193e0b92",
-      "datetime": "2026-08-19T10:01:22"
+      "url": "https://finnhub.io/api/news?id=12c44fd73b7d884d7e582aff3f1713c42eb6ef97219bf8ad8f533864b40f9b40",
+      "datetime": "2026-08-18T13:59:24"
     }
   ],
   "watchlist_articles": {
