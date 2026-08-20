@@ -1,13 +1,13 @@
 {
   "as_of": "2026-08-20",
   "macro_bullets": [
-    "US-Iran conflict escalates with the Strait of Hormuz shut and UAE reporting fresh Iranian missile launches, keeping geopolitical risk front and center.",
-    "Oil holds near multi-week highs on fading peace-deal hopes, driving energy stocks to record levels.",
-    "Surging long-dated US Treasury yields are pressuring tech and weighing on broad risk sentiment.",
-    "Gold hovers near record territory around $4,400-$4,500 as the dollar softens.",
-    "AI-infrastructure momentum continues, with Marvell's Google chip deal and Anthropic's pre-IPO credit facility topping $10 billion."
+    "Escalating US-Iran war keeps the Strait of Hormuz shut and vessels under threat after UAE reports fresh Iranian missiles, driving oil to multi-week highs.",
+    "Energy stocks hit record highs as fading US-Iran deal hopes push crude up, while Kenya Airways flags a 72% fuel-cost jump from the conflict.",
+    "US government bond yields are surging, weighing on tech and pressuring the broader Wall Street tape.",
+    "Gold hovers near record territory around $4,400-$4,500 as the dollar softens and long-dated bonds slump.",
+    "Marvell's new AI-chip deal with Google reshapes the semiconductor landscape, pressuring Broadcom and rekindling peak-cycle fears."
   ],
-  "internals_narrative": "Pharma (+2.6%) leads sectors alongside Materials (+1.5%) and Consumer Staples (+1.3%), while Financials (-1.0%) and Industrials (-1.3%) lag; MRK (+12.6%) tops gainers on vaccine news and NUE (-5.8%) leads decliners.",
+  "internals_narrative": "Defensive and inflation-hedge sectors led with Pharma +2.6% and Materials +1.5%, and MRK (+12.6%) and NEM (+7.8%) topping gainers, while Financials -1.0% and Industrials -1.3% lagged with NUE -5.8%, GE -5.0% and AVGO -4.6% among the biggest losers. The rotation shows money moving into staples, materials and healthcare and out of banks, industrials and chipmakers amid the yield spike and Middle East tension.",
   "gainers": [
     {
       "ticker": "MRK",
@@ -179,27 +179,20 @@
     }
   ],
   "ticker_notes": {
-    "MRK": "Merck surges on a Merck-Moderna cancer vaccine breakthrough touted as a catalyst for the mRNA trade.",
-    "NEM": "Newmont rallies as gold pushes toward $4,500.",
-    "NOW": "ServiceNow draws a rating downgrade even as an analyst flags it may be bottoming versus collapsing semiconductors.",
-    "AVGO": "Broadcom slides as rival Marvell surges on a Google AI chip deal that includes an option to buy a $12.2B stake.",
-    "TJX": "TJX falls after guiding Q3 adjusted EPS of $1.30-$1.32, below the $1.34 estimate, despite another strong quarter.",
-    "INTC": "Intel is in focus amid reports TSMC's AI bottleneck hands Samsung a pricing opportunity.",
-    "AMD": "AMD appoints Tim Ryan to its board and names KC McClure audit committee chair.",
-    "NUE": "Nucor drops despite bullish 'strong buy' commentary citing tariff protection and infrastructure demand.",
-    "GE": "GE Aerospace and Kratos land a US Air Force contract, while Elizabeth Warren targets defense-contractor payouts.",
-    "C": "Citi plans to launch bitcoin custody for institutional clients later this year.",
-    "CRM": "Salesforce commentary argues the market misunderstands its agentic AI strategy.",
-    "ACN": "Accenture faces dueling analyst takes on whether AI is a threat or its savior."
+    "MRK": "Merck jumped on a Merck-Moderna cancer vaccine breakthrough touted as a potential mRNA catalyst.",
+    "NEM": "Newmont rallied alongside gold's surge toward $4,500.",
+    "NOW": "ServiceNow drew a rating downgrade even as one analyst argued the stock may be bottoming.",
+    "AVGO": "Broadcom fell as rival Marvell surged on a Google AI-chip deal that muscles in on a key customer.",
+    "TJX": "TJX slid after guiding Q3 adjusted EPS of $1.30-$1.32, below the $1.34 estimate, despite another strong quarter.",
+    "GE": "GE Aerospace and Kratos landed a US Air Force contract as Peltz bets on both sides of GE's breakup.",
+    "AMD": "AMD appointed Tim Ryan to its board and named a new audit committee chair.",
+    "NUE": "Nucor was pitched as a strong buy on tariff protection and infrastructure demand despite the day's drop.",
+    "CRM": "Salesforce headlines argue the market is underappreciating its agentic-AI strategy.",
+    "ACN": "Accenture faces bearish 'dead money' commentary weighed against its AI upside.",
+    "C": "Citi is set to launch institutional bitcoin custody later this year.",
+    "AEP": "Carl Icahn trimmed his AEP stake while Truist lowered its price target to $139."
   },
   "articles": [
-    {
-      "ticker": "MRK",
-      "headline": "Merck, Moderna Cancer Vaccine Breakthrough Could Be Catalyst the mRNA ETF Trade Has Been Waiting For",
-      "source": "Benzinga",
-      "url": "https://finnhub.io/api/news?id=e659e73d22839029cea2173919dcf3b7ff288bcb4eeaab2bc415bc01a742d05d",
-      "datetime": "2026-08-19T17:49:08"
-    },
     {
       "ticker": "AVGO",
       "headline": "Broadcom Rival Marvell Surges After Google Strikes AI Chip Deal, Gets Option to Buy $12.2B Stake",
@@ -208,11 +201,11 @@
       "datetime": "2026-08-19T10:37:43"
     },
     {
-      "ticker": null,
-      "headline": "U.S. government debt yields are surging at a bad time. Here's what's behind the move",
-      "source": "CNBC",
-      "url": "https://www.cnbc.com/2026/08/18/us-government-debt-yields-are-surging-at-a-bad-time-heres-whats-behind-the-move.html",
-      "datetime": "2026-08-18T17:26:34"
+      "ticker": "MRK",
+      "headline": "Merck, Moderna Cancer Vaccine Breakthrough Could Be Catalyst the mRNA ETF Trade Has Been Waiting For",
+      "source": "Benzinga",
+      "url": "https://finnhub.io/api/news?id=e659e73d22839029cea2173919dcf3b7ff288bcb4eeaab2bc415bc01a742d05d",
+      "datetime": "2026-08-19T17:49:08"
     },
     {
       "ticker": null,
@@ -229,6 +222,13 @@
       "datetime": "2026-08-19T03:53:11"
     },
     {
+      "ticker": null,
+      "headline": "U.S. government debt yields are surging at a bad time. Here's what's behind the move",
+      "source": "CNBC",
+      "url": "https://www.cnbc.com/2026/08/18/us-government-debt-yields-are-surging-at-a-bad-time-heres-whats-behind-the-move.html",
+      "datetime": "2026-08-18T17:26:34"
+    },
+    {
       "ticker": "TJX",
       "headline": "TJX Companies Sees Q3 Adj EPS $1.30-$1.32 vs $1.34 Est",
       "source": "Benzinga",
@@ -236,46 +236,18 @@
       "datetime": "2026-08-19T07:33:11"
     },
     {
+      "ticker": "NEM",
+      "headline": "Why Newmont Mining Rallied Today",
+      "source": "Yahoo",
+      "url": "https://finnhub.io/api/news?id=5078e66d4c85e2f015eecb28bd5e13dc97cb68032566f54ac746b2f4734c7023",
+      "datetime": "2026-08-19T20:42:12"
+    },
+    {
       "ticker": null,
       "headline": "Gold edges below $4,400 as traders eye slump in long-dated bonds",
       "source": "Bloomberg",
       "url": "https://www.bloomberg.com/news/articles/2026-08-17/gold-holds-two-day-gain-on-reduced-rate-hike-expectations",
       "datetime": "2026-08-19T04:47:32"
-    },
-    {
-      "ticker": null,
-      "headline": "Where we stand on Broadcom after Marvell muscles in on its key customer Google",
-      "source": "CNBC",
-      "url": "https://www.cnbc.com/2026/08/19/where-we-stand-on-broadcom-as-shares-dip-on-googles-deal-with-marvell.html",
-      "datetime": "2026-08-19T18:58:48"
-    },
-    {
-      "ticker": "NEM",
-      "headline": "Moderna Doubles, Gold Rallies To $4,500 As Dollar Sinks: Stock Market Today",
-      "source": "Benzinga",
-      "url": "https://finnhub.io/api/news?id=85516d8c008355770031d63deb6a804ab3ae2903871b25ce3955544dea3beff6",
-      "datetime": "2026-08-19T13:10:27"
-    },
-    {
-      "ticker": "INTC",
-      "headline": "Taiwan Semiconductor\u2019s AI Bottleneck Hands Samsung a Powerful Pricing Opportunity",
-      "source": "Benzinga",
-      "url": "https://finnhub.io/api/news?id=d3e68ad50cd62bb2eda41d53822a55b0ed049f85c81afb4a03b02db6193e0b92",
-      "datetime": "2026-08-19T10:01:22"
-    },
-    {
-      "ticker": null,
-      "headline": "Anthropic pre-IPO credit facility set to climb past $10 billion",
-      "source": "Bloomberg",
-      "url": "https://www.bloomberg.com/news/articles/2026-08-18/anthropic-pre-ipo-credit-facility-set-to-climb-past-10-billion",
-      "datetime": "2026-08-19T04:06:16"
-    },
-    {
-      "ticker": "NUE",
-      "headline": "Nucor: Tariff Shield, Rising Capacity, And Infrastructure Demand Merit A Strong Buy",
-      "source": "SeekingAlpha",
-      "url": "https://finnhub.io/api/news?id=11a6b048a1c611753583aa5cca166350e872f7e17193b730c4cc1d7be4195ffd",
-      "datetime": "2026-08-18T12:05:02"
     },
     {
       "ticker": "GE",
@@ -292,11 +264,25 @@
       "datetime": "2026-08-19T15:09:10"
     },
     {
-      "ticker": "NEM",
-      "headline": "Why Newmont Mining Rallied Today",
-      "source": "Yahoo",
-      "url": "https://finnhub.io/api/news?id=5078e66d4c85e2f015eecb28bd5e13dc97cb68032566f54ac746b2f4734c7023",
-      "datetime": "2026-08-19T20:42:12"
+      "ticker": null,
+      "headline": "Anthropic pre-IPO credit facility set to climb past $10 billion",
+      "source": "Bloomberg",
+      "url": "https://www.bloomberg.com/news/articles/2026-08-18/anthropic-pre-ipo-credit-facility-set-to-climb-past-10-billion",
+      "datetime": "2026-08-19T04:06:16"
+    },
+    {
+      "ticker": "NUE",
+      "headline": "Nucor: Tariff Shield, Rising Capacity, And Infrastructure Demand Merit A Strong Buy",
+      "source": "SeekingAlpha",
+      "url": "https://finnhub.io/api/news?id=11a6b048a1c611753583aa5cca166350e872f7e17193b730c4cc1d7be4195ffd",
+      "datetime": "2026-08-18T12:05:02"
+    },
+    {
+      "ticker": "NOW",
+      "headline": "Semiconductors Are Collapsing While ServiceNow May Be Bottoming (Rating Downgrade)",
+      "source": "SeekingAlpha",
+      "url": "https://finnhub.io/api/news?id=2ce5cf60d26bd60d45145c15318b980956a407b77e99e4ef79544d204d12ba79",
+      "datetime": "2026-08-19T08:18:15"
     },
     {
       "ticker": "CRM",
@@ -306,32 +292,18 @@
       "datetime": "2026-08-19T08:05:39"
     },
     {
-      "ticker": null,
-      "headline": "Equifax (EFX) Shares Skyrocket, What You Need To Know",
-      "source": "Yahoo Finance",
-      "url": "https://finance.yahoo.com/markets/stocks/articles/equifax-efx-shares-skyrocket-know-223002319.html",
-      "datetime": "2026-08-20T01:37:50"
-    },
-    {
-      "ticker": null,
-      "headline": "OpenAI makes AI safety changes in wake of Hugging Face breach",
-      "source": "Bloomberg",
-      "url": "https://www.bloomberg.com/news/articles/2026-08-18/openai-makes-ai-safety-changes-in-wake-of-hugging-face-breach",
-      "datetime": "2026-08-19T04:17:18"
-    },
-    {
-      "ticker": null,
-      "headline": "Phillips 66 (PSX) Is Up 7.4% After Wartime-Driven Margin Surge and New Midstream Contracts - What's Changed",
-      "source": "Simply Wall Street",
-      "url": "https://simplywall.st/stocks/us/energy/nyse-psx/phillips-66/news/phillips-66-psx-is-up-74-after-wartime-driven-margin-surge-a",
-      "datetime": "2026-08-20T02:41:06"
-    },
-    {
       "ticker": "C",
       "headline": "Bitcoin Custody for Institutional Clients Is Coming to Citi Later This Year",
       "source": "Benzinga",
       "url": "https://finnhub.io/api/news?id=12c44fd73b7d884d7e582aff3f1713c42eb6ef97219bf8ad8f533864b40f9b40",
       "datetime": "2026-08-18T13:59:24"
+    },
+    {
+      "ticker": "NEM",
+      "headline": "Moderna Doubles, Gold Rallies To $4,500 As Dollar Sinks: Stock Market Today",
+      "source": "Benzinga",
+      "url": "https://finnhub.io/api/news?id=85516d8c008355770031d63deb6a804ab3ae2903871b25ce3955544dea3beff6",
+      "datetime": "2026-08-19T13:10:27"
     }
   ],
   "watchlist_articles": {
