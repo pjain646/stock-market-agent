@@ -592,7 +592,7 @@ with header_left:
         "My personal stock market assistant</p>", unsafe_allow_html=True,
     )
     st.markdown(
-        f'<p style="color:{ZINC["700"]}; font-size:.9rem; line-height:1.6; max-width:640px;">'
+        f'<p style="color:{ZINC["700"]}; font-size:.9rem; line-height:1.6;">'
         "I recently got into investing and wanted a fast way to aggregate market "
         "information every morning, plus a third-party opinion on stocks worth a "
         "closer look for the long run. So I built this.</p>", unsafe_allow_html=True,
@@ -601,13 +601,13 @@ with header_left:
         return f'<strong style="color:{ZINC["950"]};">{label}</strong>'
 
     st.markdown(
-        f'<p style="color:{ZINC["500"]}; font-size:.82rem; line-height:1.6; max-width:640px;">'
+        f'<p style="color:{ZINC["500"]}; font-size:.82rem; line-height:1.6;">'
         f'{_term("Morning brief")} aggregates news and market data so I can make my own calls. '
         f'{_term("Stock predictions")} are live picks the agent expects to rise the most over '
         "the next 21 days.</p>", unsafe_allow_html=True,
     )
     st.markdown(
-        f'<p style="color:{ZINC["500"]}; font-size:.82rem; line-height:1.6; max-width:640px;">'
+        f'<p style="color:{ZINC["500"]}; font-size:.82rem; line-height:1.6;">'
         f'Under {_term("Research")}: {_term("Track record")} is which tested signals actually '
         f'made money. {_term("Holdout verdicts")} is the final pass/fail check on data the model '
         f'never saw. {_term("Experiment detail")} is the full log of every signal tried, including '
@@ -695,21 +695,31 @@ st.markdown(
 # recruiter looking at Stock predictions shouldn't have to scroll past
 # "Research spend" to find out what today's actual pick is.
 if preview_tab == "Morning brief":
-    # The indexes at a glance. Price comes from the on-demand watchlist
-    # refresh (below, in the tab body) via session_state — read here even
-    # though that button hasn't been drawn yet this run, because
-    # session_state already carries last run's value forward.
-    watchlist_prices_preview = st.session_state.get("watchlist_prices", {})
-    index_columns = st.columns(3)
-    for _col, _ticker in zip(index_columns, config.WATCHLIST_BENCHMARKS):
-        _info = watchlist_prices_preview.get(_ticker)
-        if _info:
-            _value = f"${_info['price']:,.2f}"
-            _sub = "today's close" if _info.get("is_today") else f"as of {_info['date']}"
-        else:
-            _value = "—"
-            _sub = "refresh below for the latest"
-        _col.markdown(card(_ticker, _value, _sub, dark=True), unsafe_allow_html=True)
+    # A market snapshot from the daily-generated brief itself — not the
+    # SPY/VGT/QQQ watch-list prices, which already have their own row lower
+    # down in this same tab (behind the "Refresh latest prices" button);
+    # repeating them here would just be the same three cards twice.
+    snapshot_columns = st.columns(3)
+    brief_gainers, brief_losers = brief.get("gainers", []), brief.get("losers", [])
+    if brief_gainers:
+        top_gainer = brief_gainers[0]
+        snapshot_columns[0].markdown(
+            card("Top mover", top_gainer["ticker"], f"{top_gainer['pct_change']:+.1%}", dark=True),
+            unsafe_allow_html=True)
+    else:
+        snapshot_columns[0].markdown(card("Top mover", "—", "no brief yet", dark=True),
+                                     unsafe_allow_html=True)
+    if brief_losers:
+        top_loser = brief_losers[0]
+        snapshot_columns[1].markdown(
+            card("Biggest decliner", top_loser["ticker"], f"{top_loser['pct_change']:+.1%}"),
+            unsafe_allow_html=True)
+    else:
+        snapshot_columns[1].markdown(card("Biggest decliner", "—", "no brief yet"),
+                                     unsafe_allow_html=True)
+    story_count = len(brief.get("articles", [])) if isinstance(brief.get("articles"), list) else 0
+    snapshot_columns[2].markdown(card("Stories today", str(story_count), "macro + ticker moves"),
+                                 unsafe_allow_html=True)
 elif preview_tab == "Stock predictions":
     if not candidate_rows.empty:
         top_pick = candidate_rows.iloc[0]

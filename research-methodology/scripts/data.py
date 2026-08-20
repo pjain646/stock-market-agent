@@ -592,7 +592,7 @@ _ALPHA_VANTAGE_TICKER_CHUNK_SIZE = 5
 
 
 def fetch_alpha_vantage_company_news(tickers: list[str], limit: int = 50,
-                                     min_relevance: float = 0.15) -> pd.DataFrame:
+                                     min_relevance: float = 0.35) -> pd.DataFrame:
     """Per-ticker news via Alpha Vantage's NEWS_SENTIMENT endpoint — a
     SECOND, differently-sourced feed alongside Finnhub's `fetch_company_news`
     (via `core/live_sentiment.py`'s `fetch_headlines`).
