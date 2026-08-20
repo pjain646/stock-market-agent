@@ -444,7 +444,11 @@ def fetch_alpha_vantage_market_news(limit: int = 50) -> pd.DataFrame:
             {"function": "NEWS_SENTIMENT", "topics": "financial_markets", "limit": str(limit)},
             cache_max_age_days=_ALPHA_VANTAGE_NEWS_CACHE_MAX_AGE_DAYS,
         )
-    except Exception:
+    except Exception as exc:
+        # Logged (not raised — this is a supplemental source) so a silent
+        # empty result is distinguishable in the pipeline's own stdout from
+        # "AV genuinely had no coverage today" without touching the UI.
+        print(f"  Alpha Vantage market news unavailable: {exc}")
         return pd.DataFrame(columns=columns)
 
     feed = payload.get("feed", []) if isinstance(payload, dict) else []
@@ -464,6 +468,7 @@ def fetch_alpha_vantage_market_news(limit: int = 50) -> pd.DataFrame:
             "source": article.get("source", ""),
             "url": article.get("url", ""),
         })
+    print(f"  Alpha Vantage market news: {len(records)} articles ({len(feed)} in raw feed)")
     if not records:
         return pd.DataFrame(columns=columns)
     return (pd.DataFrame(records)
@@ -500,7 +505,11 @@ def fetch_alpha_vantage_company_news(tickers: list[str], limit: int = 50,
              "limit": str(limit)},
             cache_max_age_days=_ALPHA_VANTAGE_NEWS_CACHE_MAX_AGE_DAYS,
         )
-    except Exception:
+    except Exception as exc:
+        # Logged (not raised — this is a supplemental source) so a silent
+        # empty result is distinguishable in the pipeline's own stdout from
+        # "AV genuinely had no coverage today" without touching the UI.
+        print(f"  Alpha Vantage company news unavailable ({len(requested)} tickers requested): {exc}")
         return pd.DataFrame(columns=columns)
 
     feed = payload.get("feed", []) if isinstance(payload, dict) else []
@@ -531,6 +540,9 @@ def fetch_alpha_vantage_company_news(tickers: list[str], limit: int = 50,
                 "source": article.get("source", ""),
                 "url": article.get("url", ""),
             })
+    tickers_covered = len({r["ticker"] for r in records})
+    print(f"  Alpha Vantage company news: {len(records)} rows across {tickers_covered}/"
+          f"{len(requested)} requested tickers ({len(feed)} in raw feed)")
     if not records:
         return pd.DataFrame(columns=columns)
     return (pd.DataFrame(records)

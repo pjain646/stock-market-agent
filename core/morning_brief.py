@@ -152,9 +152,11 @@ def fetch_ticker_briefs(tickers: list[str], as_of=None,
                                max_articles=5)
         for ticker in tickers
     }
+    finnhub_total = sum(len(df) for df in finnhub_by_ticker.values())
     av_all = fetch_alpha_vantage_company_news(tickers)
 
     merged: dict[str, pd.DataFrame] = {}
+    merged_total = 0
     for ticker in tickers:
         parts = [finnhub_by_ticker[ticker]]
         if not av_all.empty:
@@ -165,6 +167,9 @@ def fetch_ticker_briefs(tickers: list[str], as_of=None,
                        .sort_values("datetime", ascending=False)
                        .reset_index(drop=True))
         merged[ticker] = combined
+        merged_total += len(combined)
+    print(f"  ticker news pool ({len(tickers)} tickers): {finnhub_total} Finnhub + "
+          f"{len(av_all)} Alpha Vantage -> {merged_total} after url-dedup")
     return merged
 
 
@@ -380,6 +385,7 @@ def build_morning_brief(panel: pd.DataFrame, as_of=None) -> tuple[dict, float]:
     # a wider raw pull gives the LLM enough non-Reuters alternatives left to
     # still clear the 10-article floor.
     market_news = fetch_market_news(max_articles=50)
+    finnhub_market_count = len(market_news)
     # Alpha Vantage's general-market feed merged in as a second, differently-
     # sourced pool (zero Reuters in practice) — degrades silently to
     # Finnhub-only if AV has no key or is down, since that function never
@@ -390,6 +396,8 @@ def build_morning_brief(panel: pd.DataFrame, as_of=None) -> tuple[dict, float]:
                        .drop_duplicates(subset=["url"])
                        .sort_values("datetime", ascending=False)
                        .reset_index(drop=True))
+    print(f"  macro news pool: {finnhub_market_count} Finnhub + {len(av_market_news)} Alpha Vantage "
+          f"-> {len(market_news)} after url-dedup")
     brief_tickers = select_brief_tickers(internals, industry_map)
     ticker_headlines = fetch_ticker_briefs(brief_tickers, as_of=as_of)
 
