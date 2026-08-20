@@ -36,6 +36,7 @@ from core.orchestration import UsageLimitError  # noqa: E402
 from core.labeling import add_forward_direction_label  # noqa: E402
 from core.splits import assign_time_split  # noqa: E402
 from core.evaluator import compare_models, per_industry_eval, walk_forward_eval  # noqa: E402
+from core.timing import timed  # noqa: E402
 from core.untrusted_exec import secrets_hidden  # noqa: E402
 
 PANEL_CACHE_PATH = PROJECT_ROOT / "data_cache" / "panel.pkl"
@@ -135,7 +136,8 @@ def build_live_panel() -> pd.DataFrame:
     today = datetime.date.today().isoformat()
     print(f"fetching {len(tickers)} tickers {config.START}..{today} "
           f"(incremental, cache: {PRICE_CACHE_PATH.relative_to(PROJECT_ROOT)}) ...")
-    panel = fetch_prices_incremental(tickers, config.START, today, PRICE_CACHE_PATH)
+    with timed(f"fetch_prices_incremental ({len(tickers)} tickers)"):
+        panel = fetch_prices_incremental(tickers, config.START, today, PRICE_CACHE_PATH)
     panel["industry"] = panel["ticker"].map(config.industry_map())
     panel = add_forward_direction_label(panel, forward_horizon_days=config.LABEL_HORIZON)
     panel["split"] = "live"
@@ -500,12 +502,13 @@ def rank_stock_candidates(panel: pd.DataFrame) -> None:
 
     print(f"combining {len(signals)} proven signal(s): "
           + ", ".join(f"{s['signal_name']} ({s['tested_score']:+.4f})" for s in signals))
-    combined_panel, feature_columns = candidates_module.build_combined_panel(
-        panel, signals, PROJECT_ROOT, load_feature_module
-    )
-    ranked = candidates_module.rank_candidates(
-        combined_panel, feature_columns, half_life_days=config.RECENCY_HALFLIFE_DAYS
-    )
+    with timed(f"build_combined_panel + rank_candidates ({len(signals)} signals)"):
+        combined_panel, feature_columns = candidates_module.build_combined_panel(
+            panel, signals, PROJECT_ROOT, load_feature_module
+        )
+        ranked = candidates_module.rank_candidates(
+            combined_panel, feature_columns, half_life_days=config.RECENCY_HALFLIFE_DAYS
+        )
     if ranked.empty:
         print("no live (unlabeled) rows with all combined features present — nothing to rank")
         return
@@ -527,7 +530,8 @@ def generate_morning_brief(panel: pd.DataFrame) -> None:
     from core import morning_brief
 
     try:
-        brief, cost = morning_brief.build_morning_brief(panel)
+        with timed("build_morning_brief (news fetch + LLM synthesis)"):
+            brief, cost = morning_brief.build_morning_brief(panel)
         morning_brief.save_brief(brief, MORNING_BRIEF_PATH)
     except Exception as brief_error:
         print(f"morning brief generation failed (non-fatal): {brief_error}")
@@ -561,11 +565,15 @@ def main() -> None:
     journal.init_journal()
 
     if arguments.rank_candidates:
-        live_panel = build_live_panel()
-        rank_stock_candidates(live_panel)
-        generate_morning_brief(live_panel)
+        with timed("build_live_panel"):
+            live_panel = build_live_panel()
+        with timed("rank_stock_candidates"):
+            rank_stock_candidates(live_panel)
+        with timed("generate_morning_brief"):
+            generate_morning_brief(live_panel)
         if arguments.push:
-            push_candidates_to_git()
+            with timed("push_candidates_to_git"):
+                push_candidates_to_git()
         return
 
     panel = build_panel(refresh=arguments.refresh_data)
