@@ -55,6 +55,37 @@ WATCHLIST_TICKERS = [
     "USAR", "IREN", "OUST", "AMD", "RKLB", "PLTR", "MRVL",
 ]
 
+# Company-name aliases for the watch-list tickers, used ONLY to filter out
+# mismatched headlines in build_watchlist_articles — a news API can tag an
+# article under a ticker's symbol even when the headline is really about a
+# different company it happens to mention in passing (a comparison piece, a
+# "which stocks are moving" roundup, etc). Requiring the ticker's own symbol
+# OR one of these names to actually appear in the headline text is a cheap,
+# no-API-call way to catch the obvious mismatches. Not exhaustive — just
+# enough aliasing to cover common headline phrasing for each name.
+WATCHLIST_ALIASES: dict[str, list[str]] = {
+    "SPY": ["S&P 500", "S&P500"],
+    "VGT": ["Vanguard Information Technology"],
+    "QQQ": ["Nasdaq 100", "Nasdaq-100"],
+    "AAPL": ["Apple"],
+    "MSFT": ["Microsoft"],
+    "NVDA": ["Nvidia"],
+    "TSLA": ["Tesla"],
+    "AMZN": ["Amazon"],
+    "GOOGL": ["Google", "Alphabet"],
+    "META": ["Meta", "Facebook"],
+    "MU": ["Micron"],
+    "SNDK": ["Sandisk"],
+    "DRAM": [],
+    "USAR": ["USA Rare Earth"],
+    "IREN": ["Iris Energy"],
+    "OUST": ["Ouster"],
+    "AMD": ["Advanced Micro Devices"],
+    "RKLB": ["Rocket Lab"],
+    "PLTR": ["Palantir"],
+    "MRVL": ["Marvell"],
+}
+
 START = "2014-01-01"
 END = "2024-12-31"
 
@@ -69,3 +100,20 @@ def all_tickers():
 
 def industry_map():
     return {t: ind for ind, ts in UNIVERSE.items() for t in ts}
+
+
+# Carves "Semiconductors" out of the "Technology" bucket for DISPLAY purposes
+# only (the morning brief's "By industry" movers chart) — never used for
+# model features. `industry_map()` above is load-bearing for existing
+# proposals/ feature code, which keys off its exact sector names, so it's
+# left untouched; this is a separate, presentational-only view of the same
+# universe. Doesn't add memory-specific names (MU, SNDK, etc.) — those are
+# watch-list-only (config.WATCHLIST_TICKERS), not part of UNIVERSE, so they
+# never appear in this movers panel regardless of labeling.
+_SEMICONDUCTOR_TICKERS = {"NVDA", "AVGO", "INTC", "TXN", "QCOM", "AMD"}
+
+
+def display_industry_map():
+    base = industry_map()
+    return {t: ("Semiconductors" if t in _SEMICONDUCTOR_TICKERS else ind)
+            for t, ind in base.items()}

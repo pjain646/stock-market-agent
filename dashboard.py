@@ -20,6 +20,7 @@ from __future__ import annotations
 import datetime
 import html
 import json
+import os
 import pathlib
 import re
 import sqlite3
@@ -33,6 +34,22 @@ from core import config, monetary_metric
 
 PROJECT_ROOT = pathlib.Path(__file__).resolve().parent
 JOURNAL_DB = PROJECT_ROOT / "journal.db"
+
+# On-demand features (e.g. "Fetch live news sentiment") call into
+# research-methodology/scripts/data.py's `_load_api_key`, which only checks
+# os.environ / keys.local.json — it has no idea Streamlit Cloud secrets
+# exist. Streamlit Cloud exposes those via `st.secrets`, not as real env
+# vars, so bridge them in here, once, at startup. (The GitHub Actions
+# workflow's own secrets are unrelated to this — those are already real env
+# vars on that runner. This only matters for the app running on Streamlit
+# Cloud itself.) Preyansh still needs to add each key (FINNHUB_API_KEY, etc.)
+# under this app's own Settings -> Secrets in Streamlit Cloud — this bridge
+# can't invent a key that was never configured there.
+try:
+    for _secret_key, _secret_value in st.secrets.items():
+        os.environ.setdefault(_secret_key, str(_secret_value))
+except Exception:
+    pass  # no secrets.toml at all (e.g. local dev) — nothing to bridge
 
 st.set_page_config(page_title="Market Research Agent", layout="wide")
 
@@ -505,13 +522,12 @@ def render_watchlist(tickers: list[str], articles_by_ticker: dict[str, list[dict
     for ticker in tickers:
         price_info = prices.get(ticker)
         if price_info:
+            sub_html = ("" if price_info["is_today"] else
+                       f'<div class="sc-sub" style="margin-top:0;">{price_info["date"]}</div>')
             price_html = (f'<span class="sc-value" style="font-size:1.05rem;">'
-                          f'${price_info["price"]:.2f}</span>'
-                          f'<div class="sc-sub" style="margin-top:0;">'
-                          f'{"latest" if price_info["is_today"] else "as of " + price_info["date"]}'
-                          f'</div>')
+                          f'${price_info["price"]:.2f}</span>{sub_html}')
         else:
-            price_html = f'<span class="sc-sub">Click refresh for the latest price</span>'
+            price_html = ""
 
         headline_rows = []
         for article in articles_by_ticker.get(ticker, []):
@@ -583,6 +599,10 @@ def freshness_indicator(as_of_date) -> str:
 
 
 # ------------------------------------------------------------------ header
+# Only the title/identity share a column split (the identity block is short
+# and only needs the top-right corner) — the bio and tab-guide paragraphs
+# below render full-width, outside any column, so they use the whole page
+# instead of being squeezed into whatever's left of a 3:1 split.
 header_left, header_right = st.columns([3, 1])
 with header_left:
     st.markdown('<h1 style="margin-bottom:0;">Welcome to Sentry</h1>',
@@ -590,30 +610,6 @@ with header_left:
     st.markdown(
         f'<p style="color:{ZINC["500"]}; margin-top:-0.2rem; font-size:.95rem; font-weight:500;">'
         "My personal stock market assistant</p>", unsafe_allow_html=True,
-    )
-    st.markdown(
-        f'<p style="color:{ZINC["700"]}; font-size:.9rem; line-height:1.6;">'
-        "I recently got into investing and wanted a fast way to aggregate market "
-        "information every morning, plus a third-party opinion on stocks worth a "
-        "closer look for the long run. So I built this.</p>", unsafe_allow_html=True,
-    )
-    def _term(label: str) -> str:
-        return f'<strong style="color:{ZINC["950"]};">{label}</strong>'
-
-    st.markdown(
-        f'<p style="color:{ZINC["500"]}; font-size:.82rem; line-height:1.6;">'
-        f'{_term("Morning brief")} aggregates news and market data so I can make my own calls. '
-        f'{_term("Stock predictions")} are live picks the agent expects to rise the most over '
-        "the next 21 days.</p>", unsafe_allow_html=True,
-    )
-    st.markdown(
-        f'<p style="color:{ZINC["500"]}; font-size:.82rem; line-height:1.6;">'
-        f'Under {_term("Research")}: {_term("Track record")} is which tested signals actually '
-        f'made money. {_term("Holdout verdicts")} is the final pass/fail check on data the model '
-        f'never saw. {_term("Experiment detail")} is the full log of every signal tried, including '
-        f'the failures. {_term("Research debate")} is the AI researchers reasoning through an idea '
-        f'before it gets tested. {_term("Metrics")} is the methodology behind all of it.</p>',
-        unsafe_allow_html=True,
     )
 with header_right:
     st.markdown(
@@ -628,6 +624,31 @@ with header_right:
         f'style="color:{ZINC["500"]}; text-decoration:none; border-bottom:1px solid {ZINC["300"]};">'
         'LinkedIn</a></div></div>', unsafe_allow_html=True,
     )
+
+st.markdown(
+    f'<p style="color:{ZINC["700"]}; font-size:.9rem; line-height:1.6;">'
+    "I recently got into investing and wanted a fast way to aggregate market "
+    "information every morning, plus a third-party opinion on stocks worth a "
+    "closer look for the long run. So I built this.</p>", unsafe_allow_html=True,
+)
+def _term(label: str) -> str:
+    return f'<strong style="color:{ZINC["950"]};">{label}</strong>'
+
+st.markdown(
+    f'<p style="color:{ZINC["500"]}; font-size:.82rem; line-height:1.6;">'
+    f'{_term("Morning brief")} aggregates news and market data so I can make my own calls. '
+    f'{_term("Stock predictions")} are live picks the agent expects to rise the most over '
+    "the next 21 days.</p>", unsafe_allow_html=True,
+)
+st.markdown(
+    f'<p style="color:{ZINC["500"]}; font-size:.82rem; line-height:1.6;">'
+    f'Under {_term("Research")}: {_term("Track record")} is which tested signals actually '
+    f'made money. {_term("Holdout verdicts")} is the final pass/fail check on data the model '
+    f'never saw. {_term("Experiment detail")} is the full log of every signal tried, including '
+    f'the failures. {_term("Research debate")} is the AI researchers reasoning through an idea '
+    f'before it gets tested. {_term("Metrics")} is the methodology behind all of it.</p>',
+    unsafe_allow_html=True,
+)
 
 experiments = load_experiments()
 if experiments.empty:
@@ -695,31 +716,24 @@ st.markdown(
 # recruiter looking at Stock predictions shouldn't have to scroll past
 # "Research spend" to find out what today's actual pick is.
 if preview_tab == "Morning brief":
-    # A market snapshot from the daily-generated brief itself — not the
-    # SPY/VGT/QQQ watch-list prices, which already have their own row lower
-    # down in this same tab (behind the "Refresh latest prices" button);
-    # repeating them here would just be the same three cards twice.
-    snapshot_columns = st.columns(3)
-    brief_gainers, brief_losers = brief.get("gainers", []), brief.get("losers", [])
-    if brief_gainers:
-        top_gainer = brief_gainers[0]
-        snapshot_columns[0].markdown(
-            card("Top mover", top_gainer["ticker"], f"{top_gainer['pct_change']:+.1%}", dark=True),
-            unsafe_allow_html=True)
-    else:
-        snapshot_columns[0].markdown(card("Top mover", "—", "no brief yet", dark=True),
-                                     unsafe_allow_html=True)
-    if brief_losers:
-        top_loser = brief_losers[0]
-        snapshot_columns[1].markdown(
-            card("Biggest decliner", top_loser["ticker"], f"{top_loser['pct_change']:+.1%}"),
-            unsafe_allow_html=True)
-    else:
-        snapshot_columns[1].markdown(card("Biggest decliner", "—", "no brief yet"),
-                                     unsafe_allow_html=True)
-    story_count = len(brief.get("articles", [])) if isinstance(brief.get("articles"), list) else 0
-    snapshot_columns[2].markdown(card("Stories today", str(story_count), "macro + ticker moves"),
-                                 unsafe_allow_html=True)
+    # The indexes at a glance — the only place they're shown (the Watch
+    # list section below only renders the individual tickers, not the
+    # benchmarks again, so this isn't a duplicate). Price comes from the
+    # on-demand refresh button in that section; a click there calls
+    # st.rerun() immediately after storing the fetched prices, so these
+    # cards (which render earlier in the script) pick up the fresh value
+    # on that same interaction instead of lagging a run behind.
+    watchlist_prices_preview = st.session_state.get("watchlist_prices", {})
+    index_columns = st.columns(3)
+    for _col, _ticker in zip(index_columns, config.WATCHLIST_BENCHMARKS):
+        _info = watchlist_prices_preview.get(_ticker)
+        if _info:
+            _value = f"${_info['price']:,.2f}"
+            _sub = "today" if _info.get("is_today") else _info["date"]
+        else:
+            _value = "—"
+            _sub = ""
+        _col.markdown(card(_ticker, _value, _sub, dark=True), unsafe_allow_html=True)
 elif preview_tab == "Stock predictions":
     if not candidate_rows.empty:
         top_pick = candidate_rows.iloc[0]
@@ -1051,11 +1065,14 @@ if active_tab == "Morning brief":
                     st.session_state.pop("watchlist_prices_error", None)
                 except Exception as exc:  # network error, yfinance outage, etc.
                     st.session_state["watchlist_prices_error"] = str(exc)
+                # Without this, the hero index cards above (which already
+                # rendered earlier in this same script pass) would keep
+                # showing the pre-click price until some LATER interaction
+                # triggers another rerun — see the comment at those cards.
+                st.rerun()
         caption_col.markdown(
             f'<p style="color:{ZINC["500"]}; font-size:.78rem; padding-top:.5rem;">'
-            "Prices aren't in the daily-generated brief — the pipeline runs before the "
-            "market opens, so there'd be nothing real to show yet. Click refresh for "
-            "the latest available price.</p>",
+            "Click refresh for the latest available price.</p>",
             unsafe_allow_html=True)
         if st.session_state.get("watchlist_prices_error"):
             st.warning(f"Could not fetch prices: {st.session_state['watchlist_prices_error']}")
@@ -1065,11 +1082,8 @@ if active_tab == "Morning brief":
         if not isinstance(watchlist_articles, dict):
             watchlist_articles = {}
 
-        if config.WATCHLIST_BENCHMARKS:
-            st.markdown(render_watchlist(config.WATCHLIST_BENCHMARKS, watchlist_articles,
-                                         watchlist_prices, dark=True),
-                       unsafe_allow_html=True)
-            st.markdown("<div style='height:.75rem'></div>", unsafe_allow_html=True)
+        # Benchmarks (SPY/VGT/QQQ) already have their own hero cards above —
+        # only the individual watch-list tickers render here.
         st.markdown(render_watchlist(config.WATCHLIST_TICKERS, watchlist_articles, watchlist_prices),
                    unsafe_allow_html=True)
         st.markdown("<div style='height:1.4rem'></div>", unsafe_allow_html=True)
@@ -1325,9 +1339,16 @@ if active_tab == "Research debate":
     st.markdown('<div class="sc-label">The research team\'s conversation</div>',
                 unsafe_allow_html=True)
     st.markdown(
-        f'<p style="color:{ZINC["500"]}; font-size:.85rem;">Three AI analysts debate, then a '
-        "manager decides what to test. They choose what's tested — they never influence "
-        "the score.</p>", unsafe_allow_html=True)
+        f'<p style="color:{ZINC["500"]}; font-size:.85rem; line-height:1.7;">'
+        "Before anything gets tested, a 7-agent team debates what's worth trying. "
+        f'{_term("Fundamental")}, {_term("Valuation")}, {_term("Macro")}, and '
+        f'{_term("Sentiment")} analysts each propose ideas from their own domain — company '
+        "financials, how cheap/expensive a stock is, the macro/rate regime, and analyst "
+        f'sentiment, respectively. A {_term("Bull")} and a {_term("Bear")} researcher then argue '
+        "for and against the strongest proposals. Finally the "
+        f'{_term("Research manager")} weighs the debate and picks the exact factor set that '
+        "actually gets built and tested below — the team chooses WHAT gets tested, but never "
+        "sees or influences the score it gets.</p>", unsafe_allow_html=True)
 
     conversations = find_agent_conversations()
     if not conversations:
@@ -1374,6 +1395,17 @@ if active_tab == "Research debate":
                 st.write("No conversation recorded for this run.")
 
 if active_tab == "Holdout verdicts":
+    st.markdown(
+        f'<p style="color:{ZINC["500"]}; font-size:.85rem; line-height:1.7;">'
+        "The holdout is a slice of data sealed away from the entire research process — never "
+        "used for training, validation, or picking which factors to try. It gets checked exactly "
+        "ONCE, at the very end of a run, for whichever signal scored best on validation up to "
+        "that point — like a final exam you only get to sit once. That's why only a handful of "
+        "signals show up here even though dozens have been tested: opening the holdout is a "
+        "one-time, irreversible look, so it happens once per research run, not once per tested "
+        "idea. Checking it more than that would let a run quietly keep re-rolling until it got a "
+        "good result, which defeats the entire point of sealing it in the first place.</p>",
+        unsafe_allow_html=True)
     if holdout_verdicts.empty:
         st.markdown('<div class="sc-card">The final test hasn\'t run yet — it opens once, '
                     'at the very end of a research run.</div>',
