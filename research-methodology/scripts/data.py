@@ -542,42 +542,11 @@ def fetch_alpha_vantage_market_news(limit: int = 50) -> pd.DataFrame:
             .reset_index(drop=True))
 
 
-def fetch_alpha_vantage_company_news(tickers: list[str], limit: int = 50,
-                                     min_relevance: float = 0.15) -> pd.DataFrame:
-    """Per-ticker news via Alpha Vantage's NEWS_SENTIMENT endpoint — a
-    SECOND, differently-sourced feed alongside Finnhub's `fetch_company_news`
-    (via `core/live_sentiment.py`'s `fetch_headlines`).
-
-    ONE call covers every ticker in `tickers` at once (AV accepts a
-    comma-joined `tickers` param, up to 50) — never one call per ticker,
-    since the free tier is 25 calls/day. Each returned article can be
-    relevant to several of the requested tickers at once; AV's own
-    `ticker_sentiment` list says which, with a relevance score, so this
-    explodes one article into one row per ticker it's ACTUALLY relevant to
-    (>= `min_relevance`) rather than attributing it to every ticker asked for.
-
-    Returns DataFrame [ticker, datetime, headline, summary, source, url].
-    Empty DataFrame on no coverage, a missing key, or a transient AV outage —
-    this is a nice-to-have supplement, never a required source, so it never
-    raises.
-    """
-    columns = ["ticker", "datetime", "headline", "summary", "source", "url"]
-    if not tickers:
-        return pd.DataFrame(columns=columns)
-    requested = {t.upper() for t in tickers}
-    try:
-        payload = _alpha_vantage_get(
-            {"function": "NEWS_SENTIMENT", "tickers": ",".join(sorted(requested)),
-             "limit": str(limit)},
-            cache_max_age_days=_ALPHA_VANTAGE_NEWS_CACHE_MAX_AGE_DAYS,
-        )
-    except Exception as exc:
-        # Logged (not raised — this is a supplemental source) so a silent
-        # empty result is distinguishable in the pipeline's own stdout from
-        # "AV genuinely had no coverage today" without touching the UI.
-        print(f"  Alpha Vantage company news unavailable ({len(requested)} tickers requested): {exc}")
-        return pd.DataFrame(columns=columns)
-
+def _parse_news_sentiment_feed(payload: dict, requested: set[str],
+                               min_relevance: float) -> list[dict]:
+    """Shared row-building logic for one NEWS_SENTIMENT response: explode
+    each article into one row per requested ticker it's actually relevant
+    to (see `fetch_alpha_vantage_company_news`'s docstring)."""
     feed = payload.get("feed", []) if isinstance(payload, dict) else []
     records = []
     for article in feed:
@@ -606,9 +575,73 @@ def fetch_alpha_vantage_company_news(tickers: list[str], limit: int = 50,
                 "source": article.get("source", ""),
                 "url": article.get("url", ""),
             })
+    return records
+
+
+# A single call covering ~18-19 tickers at once (the natural batch size —
+# movers or the watch list) came back with a completely empty feed both
+# times it was tried, no error, nothing throttled — see the chat log from
+# investigating this. Root cause unconfirmed (an undocumented count limit
+# on `tickers`, or one unrecognized small-cap symbol like DRAM/USAR/IREN
+# poisoning the whole comma-joined query — AV's docs don't say either way).
+# Chunking is the fix that's robust to BOTH possible causes: smaller batches
+# sidestep a count limit directly, and contain a bad-symbol failure to just
+# that one chunk instead of zeroing out everything. Costs a few more calls,
+# which the 25/day free tier has room for (a full run uses roughly a dozen).
+_ALPHA_VANTAGE_TICKER_CHUNK_SIZE = 5
+
+
+def fetch_alpha_vantage_company_news(tickers: list[str], limit: int = 50,
+                                     min_relevance: float = 0.15) -> pd.DataFrame:
+    """Per-ticker news via Alpha Vantage's NEWS_SENTIMENT endpoint — a
+    SECOND, differently-sourced feed alongside Finnhub's `fetch_company_news`
+    (via `core/live_sentiment.py`'s `fetch_headlines`).
+
+    Batched in chunks of `_ALPHA_VANTAGE_TICKER_CHUNK_SIZE` tickers per call
+    (AV accepts a comma-joined `tickers` param) rather than one call per
+    ticker OR one call for everything — see the comment above
+    `_ALPHA_VANTAGE_TICKER_CHUNK_SIZE` for why. Each returned article can be
+    relevant to several of the requested tickers at once; AV's own
+    `ticker_sentiment` list says which, with a relevance score, so this
+    explodes one article into one row per ticker it's ACTUALLY relevant to
+    (>= `min_relevance`) rather than attributing it to every ticker asked for.
+
+    Returns DataFrame [ticker, datetime, headline, summary, source, url].
+    Empty DataFrame on no coverage, a missing key, or a transient AV outage —
+    this is a nice-to-have supplement, never a required source, so a failed
+    chunk is logged and skipped, never raised.
+    """
+    columns = ["ticker", "datetime", "headline", "summary", "source", "url"]
+    if not tickers:
+        return pd.DataFrame(columns=columns)
+    requested = sorted({t.upper() for t in tickers})
+
+    records: list[dict] = []
+    chunk_count = 0
+    for chunk_start in range(0, len(requested), _ALPHA_VANTAGE_TICKER_CHUNK_SIZE):
+        chunk = requested[chunk_start:chunk_start + _ALPHA_VANTAGE_TICKER_CHUNK_SIZE]
+        chunk_count += 1
+        try:
+            payload = _alpha_vantage_get(
+                {"function": "NEWS_SENTIMENT", "tickers": ",".join(chunk), "limit": str(limit)},
+                cache_max_age_days=_ALPHA_VANTAGE_NEWS_CACHE_MAX_AGE_DAYS,
+            )
+        except Exception as exc:
+            # Logged (not raised — this is a supplemental source) so a
+            # silent empty result is distinguishable in the pipeline's own
+            # stdout from "AV genuinely had no coverage today" without
+            # touching the UI.
+            print(f"  Alpha Vantage company news unavailable for chunk {chunk}: {exc}")
+            continue
+        chunk_records = _parse_news_sentiment_feed(payload, set(chunk), min_relevance)
+        feed_len = len(payload.get("feed", [])) if isinstance(payload, dict) else 0
+        print(f"  Alpha Vantage company news chunk {chunk}: {len(chunk_records)} rows "
+              f"({feed_len} in raw feed)")
+        records.extend(chunk_records)
+
     tickers_covered = len({r["ticker"] for r in records})
     print(f"  Alpha Vantage company news: {len(records)} rows across {tickers_covered}/"
-          f"{len(requested)} requested tickers ({len(feed)} in raw feed)")
+          f"{len(requested)} requested tickers, {chunk_count} chunk(s)")
     if not records:
         return pd.DataFrame(columns=columns)
     return (pd.DataFrame(records)
