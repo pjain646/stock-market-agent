@@ -691,6 +691,33 @@ preview_tab = _prior_research_tab if _prior_top_tab == "Research" else _prior_to
 _ARROW = f'<div style="color:{ZINC["300"]}; font-size:1.1rem; padding:0 .4rem;">&rarr;</div>'
 
 
+@st.cache_data(ttl=300)  # 5 min — cheap enough to always show, no need for a button
+def _fetch_benchmark_prices() -> dict:
+    """SPY/VGT/QQQ latest close, fetched automatically on every page load
+    (unlike the full ~19-ticker watch list below, which is heavier and
+    stays button-gated). Same yfinance shape as the "Refresh latest prices"
+    fetch, just scoped to the 3 benchmarks so it's fast enough to run
+    unprompted."""
+    import yfinance as yf
+
+    raw_prices = yf.download(config.WATCHLIST_BENCHMARKS, period="5d", interval="1d",
+                             auto_adjust=False, progress=False, group_by="ticker")
+    today_date = pd.Timestamp.today().normalize()
+    prices = {}
+    for ticker in config.WATCHLIST_BENCHMARKS:
+        try:
+            series = raw_prices[ticker].dropna(subset=["Close"])
+            if series.empty:
+                continue
+            last_date = series.index[-1].normalize()
+            prices[ticker] = {"price": float(series.iloc[-1]["Close"]),
+                              "date": last_date.strftime("%Y-%m-%d"),
+                              "is_today": last_date == today_date}
+        except (KeyError, IndexError):
+            continue
+    return prices
+
+
 def _arch_step(name: str, caption: str, icon: str) -> str:
     return (f'<div style="flex:1; text-align:center;">'
             f'<span class="material-symbols-rounded" '
@@ -718,12 +745,19 @@ st.markdown(
 if preview_tab == "Morning brief":
     # The indexes at a glance — the only place they're shown (the Watch
     # list section below only renders the individual tickers, not the
-    # benchmarks again, so this isn't a duplicate). Price comes from the
-    # on-demand refresh button in that section; a click there calls
-    # st.rerun() immediately after storing the fetched prices, so these
-    # cards (which render earlier in the script) pick up the fresh value
-    # on that same interaction instead of lagging a run behind.
+    # benchmarks again, so this isn't a duplicate). Prefer the full-refresh
+    # session_state price (set by the "Refresh latest prices" button, which
+    # calls st.rerun() right after so these cards — rendered earlier in the
+    # script — pick up the fresh value on that same click) if it exists;
+    # otherwise fall back to the auto-fetched, cached benchmark-only prices
+    # so these 3 are never blank just because the button hasn't been
+    # clicked yet — unlike the full watch list, which stays button-gated.
     watchlist_prices_preview = st.session_state.get("watchlist_prices", {})
+    if not watchlist_prices_preview:
+        try:
+            watchlist_prices_preview = _fetch_benchmark_prices()
+        except Exception:
+            watchlist_prices_preview = {}
     index_columns = st.columns(3)
     for _col, _ticker in zip(index_columns, config.WATCHLIST_BENCHMARKS):
         _info = watchlist_prices_preview.get(_ticker)
