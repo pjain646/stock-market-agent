@@ -640,6 +640,31 @@ best_money_row = (monetary_summary.loc[monetary_summary["dollar_edge"].idxmax()]
                   if not monetary_summary.empty else None)
 holdout_verdicts = load_holdout_verdicts()
 
+# Loaded once here (rather than inside each tab body below) so the hero
+# cards above the nav can show tab-relevant content instead of the same
+# four research numbers regardless of which tab is about to render.
+candidates_csv_path = PROJECT_ROOT / "candidates" / "candidates.csv"
+candidates_manifest_path = PROJECT_ROOT / "candidates" / "candidates.manifest.json"
+candidate_rows = pd.read_csv(candidates_csv_path) if candidates_csv_path.exists() else pd.DataFrame()
+candidates_manifest = (json.loads(candidates_manifest_path.read_text())
+                       if candidates_manifest_path.exists() else {})
+candidates_as_of = candidate_rows["date"].iloc[0] if not candidate_rows.empty else "unknown"
+
+morning_brief_path = PROJECT_ROOT / "candidates" / "morning_brief.json"
+brief = json.loads(morning_brief_path.read_text()) if morning_brief_path.exists() else {}
+
+# Two-level nav lives further down (st.pills needs to be instantiated to
+# render), but st.pills is backed by session_state and that state is
+# already populated by the time this script starts re-running — so it can
+# be read here, before the widgets exist, to know which tab is about to be
+# active and pick the right hero cards for it.
+RESEARCH_TAB_NAMES = ["Track record", "Holdout verdicts", "Experiment detail",
+                      "Research debate", "Metrics"]
+TOP_TAB_NAMES = ["Morning brief", "Stock predictions", "Research"]
+_prior_top_tab = st.session_state.get("top_tab", TOP_TAB_NAMES[0])
+_prior_research_tab = st.session_state.get("research_tab", RESEARCH_TAB_NAMES[0])
+preview_tab = _prior_research_tab if _prior_top_tab == "Research" else _prior_top_tab
+
 # Architecture strip — the whole point is to make the validation discipline
 # visible without anyone having to click into the Metrics tab.
 _ARROW = f'<div style="color:{ZINC["300"]}; font-size:1.1rem; padding:0 .4rem;">&rarr;</div>'
@@ -665,36 +690,72 @@ st.markdown(
     + '</div></div>', unsafe_allow_html=True,
 )
 
-# Hero (dark) card = the headline number; the rest stay light. Only the
-# external ($) metric appears here — internal research metrics live behind
-# "technical details" in the Experiment detail tab and on the Metrics page.
-overview = st.columns(4)
-if best_money_row is not None:
-    overview[0].markdown(money_card("Best signal", best_money_row["dollar_edge"],
-                                    display_name(best_money_row["signal_name"]), dark=True,
-                                    icon="trending_up"),
-                         unsafe_allow_html=True)
+# Hero cards change with the tab about to render (preview_tab, computed
+# above) instead of always showing the same four research numbers — a
+# recruiter looking at Stock predictions shouldn't have to scroll past
+# "Research spend" to find out what today's actual pick is.
+if preview_tab == "Morning brief":
+    # The indexes at a glance. Price comes from the on-demand watchlist
+    # refresh (below, in the tab body) via session_state — read here even
+    # though that button hasn't been drawn yet this run, because
+    # session_state already carries last run's value forward.
+    watchlist_prices_preview = st.session_state.get("watchlist_prices", {})
+    index_columns = st.columns(3)
+    for _col, _ticker in zip(index_columns, config.WATCHLIST_BENCHMARKS):
+        _info = watchlist_prices_preview.get(_ticker)
+        if _info:
+            _value = f"${_info['price']:,.2f}"
+            _sub = "today's close" if _info.get("is_today") else f"as of {_info['date']}"
+        else:
+            _value = "—"
+            _sub = "refresh below for the latest"
+        _col.markdown(card(_ticker, _value, _sub, dark=True), unsafe_allow_html=True)
+elif preview_tab == "Stock predictions":
+    if not candidate_rows.empty:
+        top_pick = candidate_rows.iloc[0]
+        pred_columns = st.columns(3)
+        pred_columns[0].markdown(card("Top pick", top_pick["ticker"],
+                                      f"{top_pick['predicted_up_probability']:.0%} confidence",
+                                      dark=True),
+                                 unsafe_allow_html=True)
+        pred_columns[1].markdown(card("Stocks ranked", str(len(candidate_rows)),
+                                      f"{candidate_rows['industry'].nunique()} industries"),
+                                 unsafe_allow_html=True)
+        driver_label = display_driver(top_pick["top_driver"])
+        driver_label = driver_label if len(driver_label) <= 24 else driver_label[:21] + "..."
+        pred_columns[2].markdown(card("Top driver", driver_label, ""), unsafe_allow_html=True)
+    else:
+        st.markdown(card("Top pick", "—", "no picks yet", dark=True), unsafe_allow_html=True)
 else:
-    overview[0].markdown(card("Best signal", "—", "no tested signals yet", dark=True,
-                              icon="trending_up"),
+    # Research (and its 5 sub-tabs) — the "is this for real" proof numbers.
+    # Only the external ($) metric appears dark here — internal research
+    # metrics live behind "technical details" in Experiment detail/Metrics.
+    overview = st.columns(4)
+    if best_money_row is not None:
+        overview[0].markdown(money_card("Best signal", best_money_row["dollar_edge"],
+                                        display_name(best_money_row["signal_name"]), dark=True,
+                                        icon="trending_up"),
+                             unsafe_allow_html=True)
+    else:
+        overview[0].markdown(card("Best signal", "—", "no tested signals yet", dark=True,
+                                  icon="trending_up"),
+                             unsafe_allow_html=True)
+    overview[1].markdown(card("Experiments", str(len(experiments)), f"{len(tested)} tested",
+                              icon="science"), unsafe_allow_html=True)
+    overview[2].markdown(card("Research spend", f"${total_cost:.2f}", "", icon="payments"),
                          unsafe_allow_html=True)
-overview[1].markdown(card("Experiments", str(len(experiments)), f"{len(tested)} tested",
-                          icon="science"), unsafe_allow_html=True)
-overview[2].markdown(card("Research spend", f"${total_cost:.2f}", "", icon="payments"),
-                     unsafe_allow_html=True)
-if holdout_verdicts.empty:
-    overview[3].markdown(card("Gate 1", "sealed", "opens at the end of a run", icon="verified"),
-                         unsafe_allow_html=True)
-else:
-    latest = holdout_verdicts.iloc[-1]
-    gate_passed = bool(latest["gate1_passed"])
-    gate_text = "PASSED ↗" if gate_passed else "FAILED ↘"
-    overview[3].markdown(card("Gate 1", gate_text, display_name(latest["signal_name"]),
-                              icon="verified"),
-                         unsafe_allow_html=True)
-
-st.markdown(f'<p style="color:{ZINC["500"]}; font-size:.78rem; margin-top:.5rem;">{MONEY_DISCLAIMER}</p>',
-            unsafe_allow_html=True)
+    if holdout_verdicts.empty:
+        overview[3].markdown(card("Gate 1", "sealed", "opens at the end of a run", icon="verified"),
+                             unsafe_allow_html=True)
+    else:
+        latest = holdout_verdicts.iloc[-1]
+        gate_passed = bool(latest["gate1_passed"])
+        gate_text = "PASSED ↗" if gate_passed else "FAILED ↘"
+        overview[3].markdown(card("Gate 1", gate_text, display_name(latest["signal_name"]),
+                                  icon="verified"),
+                             unsafe_allow_html=True)
+    st.markdown(f'<p style="color:{ZINC["500"]}; font-size:.78rem; margin-top:.5rem;">{MONEY_DISCLAIMER}</p>',
+                unsafe_allow_html=True)
 
 st.markdown("<div style='height:.75rem'></div>", unsafe_allow_html=True)
 
@@ -708,9 +769,8 @@ st.markdown("<div style='height:.75rem'></div>", unsafe_allow_html=True)
 # picking "Research" reveals a second pills row for the 5 tabs behind it
 # (Track record, Holdout verdicts, Experiment detail, Research debate,
 # Metrics), matching the two-paragraph explainer in the header bio above.
-RESEARCH_TAB_NAMES = ["Track record", "Holdout verdicts", "Experiment detail",
-                      "Research debate", "Metrics"]
-TOP_TAB_NAMES = ["Morning brief", "Stock predictions", "Research"]
+# RESEARCH_TAB_NAMES / TOP_TAB_NAMES are defined earlier, before the hero
+# cards, so preview_tab could be computed ahead of these widgets existing.
 top_tab = st.pills("Navigation", TOP_TAB_NAMES, default=TOP_TAB_NAMES[0],
                    key="top_tab", label_visibility="collapsed")
 
@@ -805,16 +865,13 @@ if active_tab == "Stock predictions":
     # The product's actual output: per-stock predictions from COMBINED proven
     # signals (core/candidates.py, task #10). Reads whatever
     # `python3 research_pipeline.py --rank-candidates` last produced.
+    # candidate_rows / candidates_manifest / candidates_as_of are loaded once,
+    # up top, so the hero cards above the nav can use them too.
     positive_signals = tested[tested["tested_score"] > 0] if not tested.empty else pd.DataFrame()
-    candidates_csv_path = PROJECT_ROOT / "candidates" / "candidates.csv"
-    candidates_manifest_path = PROJECT_ROOT / "candidates" / "candidates.manifest.json"
+    as_of_date = candidates_as_of
+    manifest = candidates_manifest
 
-    if candidates_csv_path.exists():
-        candidate_rows = pd.read_csv(candidates_csv_path)
-        manifest = (json.loads(candidates_manifest_path.read_text())
-                   if candidates_manifest_path.exists() else {})
-        as_of_date = candidate_rows["date"].iloc[0] if not candidate_rows.empty else "unknown"
-
+    if not candidate_rows.empty:
         st.markdown('<div class="sc-label">Today\'s stock picks</div>', unsafe_allow_html=True)
         signals_used = manifest.get("signals_used", [])
         signal_badges = " ".join(badge(display_name(s["signal_name"]), "muted") for s in signals_used)
@@ -823,71 +880,90 @@ if active_tab == "Stock predictions":
                     f'{freshness_indicator(as_of_date)} · based on {len(signals_used)} proven signal(s): '
                     f'{signal_badges}</p>', unsafe_allow_html=True)
 
-        if not candidate_rows.empty:
-            top_pick = candidate_rows.iloc[0]
-            hero_columns = st.columns(3)
-            hero_columns[0].markdown(card("Top pick", top_pick["ticker"],
-                                          f"{top_pick['predicted_up_probability']:.0%} confidence", dark=True),
-                                     unsafe_allow_html=True)
-            hero_columns[1].markdown(card("Stocks ranked", str(len(candidate_rows)),
-                                          f"{candidate_rows['industry'].nunique()} industries"),
-                                     unsafe_allow_html=True)
-            driver_label = display_driver(top_pick["top_driver"])
-            driver_label = driver_label if len(driver_label) <= 24 else driver_label[:21] + "..."
-            hero_columns[2].markdown(card("Top driver", driver_label, ""), unsafe_allow_html=True)
+        # Each pick's "top_driver" is one feature inside one of the proven
+        # signal bundles above (e.g. "iter29__profmom_roa_chg_rank" is a
+        # feature from iteration 29's tested bundle) — map it back to that
+        # bundle's own $ edge from the Track record tab, so a pick doesn't
+        # show up as a bare, unsupported "we think this one" with nothing
+        # behind it.
+        def _driver_dollar_edge(top_driver: str) -> str:
+            match = re.match(r"iter(\d+)__", str(top_driver))
+            if not match or experiments.empty or monetary_summary.empty:
+                return "—"
+            iteration_matches = experiments[experiments["iteration"] == int(match.group(1))]
+            if iteration_matches.empty:
+                return "—"
+            edge_matches = monetary_summary[
+                monetary_summary["signal_name"] == iteration_matches.iloc[0]["signal_name"]]
+            if edge_matches.empty:
+                return "—"
+            edge = edge_matches.iloc[0]["dollar_edge"]
+            return f"{'+' if edge >= 0 else '-'}${abs(edge):,.0f}"
 
-            display_columns = ["ticker", "industry", "predicted_up_probability", "top_driver"]
-            display_table = candidate_rows[display_columns].copy()
-            display_table["predicted_up_probability"] = display_table["predicted_up_probability"].map("{:.0%}".format)
-            display_table["top_driver"] = display_table["top_driver"].map(display_driver)
-            display_table = display_table.rename(
-                columns={"predicted_up_probability": "Confidence", "top_driver": "Signal",
-                         "ticker": "Ticker", "industry": "Industry"}
-            )
-            st.dataframe(display_table, use_container_width=True, hide_index=True)
-            st.download_button("Download CSV", candidate_rows.to_csv(index=False),
-                               file_name=f"candidates_{as_of_date}.csv", mime="text/csv")
+        # Only the top 10 by confidence are shown by default — a recruiter
+        # (or me, most mornings) wants "here's the shortlist and why", not a
+        # 150-row grid to scroll through. The full ranked list is still one
+        # click away, and the CSV download always has everything.
+        ranked_rows = candidate_rows.sort_values("predicted_up_probability", ascending=False)
 
-            # ---------------- live news sentiment (annotation ONLY) -------------
-            st.markdown('<div class="sc-label" style="margin-top:1.4rem">'
-                        'Recent news on these stocks</div>', unsafe_allow_html=True)
-            st.markdown(
-                f'<p style="color:{ZINC["500"]}; font-size:.85rem;">Extra context from the last 21 '
-                "days of news — not part of the prediction above.</p>",
-                unsafe_allow_html=True)
+        def _display_table(rows: pd.DataFrame) -> pd.DataFrame:
+            out = rows[["ticker", "industry", "predicted_up_probability", "top_driver"]].copy()
+            out["Signal $ edge"] = rows["top_driver"].map(_driver_dollar_edge)
+            out["predicted_up_probability"] = out["predicted_up_probability"].map("{:.0%}".format)
+            out["top_driver"] = out["top_driver"].map(display_driver)
+            return out.rename(columns={"predicted_up_probability": "Confidence", "top_driver": "Signal",
+                                       "ticker": "Ticker", "industry": "Industry"})
 
-            sentiment_state_key = f"live_sentiment_{as_of_date}"
-            if st.button("Fetch live news sentiment", key="fetch_sentiment"):
+        st.markdown(f'<div class="sc-sub" style="margin-bottom:.4rem;">Top 10 of {len(candidate_rows)} '
+                    'ranked stocks — "Signal $ edge" is the backtested edge of the proven signal '
+                    'behind each pick.</div>', unsafe_allow_html=True)
+        st.dataframe(_display_table(ranked_rows.head(10)), use_container_width=True, hide_index=True)
+        with st.expander(f"See the full ranked list — all {len(candidate_rows)} stocks across "
+                         f"{candidate_rows['industry'].nunique()} industries"):
+            st.dataframe(_display_table(ranked_rows), use_container_width=True, hide_index=True)
+        st.download_button("Download CSV", candidate_rows.to_csv(index=False),
+                           file_name=f"candidates_{as_of_date}.csv", mime="text/csv")
+
+        # ---------------- live news sentiment (annotation ONLY) -------------
+        st.markdown('<div class="sc-label" style="margin-top:1.4rem">'
+                    'Recent news on these stocks</div>', unsafe_allow_html=True)
+        st.markdown(
+            f'<p style="color:{ZINC["500"]}; font-size:.85rem;">Extra context from the last 21 '
+            "days of news — not part of the prediction above.</p>",
+            unsafe_allow_html=True)
+
+        sentiment_state_key = f"live_sentiment_{as_of_date}"
+        if st.button("Fetch live news sentiment", key="fetch_sentiment"):
+            from core import live_sentiment
+
+            tickers = candidate_rows["ticker"].head(15).tolist()
+            with st.spinner(f"Reading recent news for {len(tickers)} names ..."):
+                try:
+                    table, sentiment_cost = live_sentiment.score_tickers(tickers)
+                    st.session_state[sentiment_state_key] = (table, sentiment_cost)
+                except Exception as exc:  # missing key, rate limit, etc.
+                    st.session_state[sentiment_state_key] = (None, str(exc))
+
+        if sentiment_state_key in st.session_state:
+            table, meta = st.session_state[sentiment_state_key]
+            if table is None:
+                st.warning(f"Could not fetch sentiment: {meta}")
+            else:
                 from core import live_sentiment
 
-                tickers = candidate_rows["ticker"].head(15).tolist()
-                with st.spinner(f"Reading recent news for {len(tickers)} names ..."):
-                    try:
-                        table, sentiment_cost = live_sentiment.score_tickers(tickers)
-                        st.session_state[sentiment_state_key] = (table, sentiment_cost)
-                    except Exception as exc:  # missing key, rate limit, etc.
-                        st.session_state[sentiment_state_key] = (None, str(exc))
-
-            if sentiment_state_key in st.session_state:
-                table, meta = st.session_state[sentiment_state_key]
-                if table is None:
-                    st.warning(f"Could not fetch sentiment: {meta}")
-                else:
-                    from core import live_sentiment
-
-                    annotated = table.copy()
-                    annotated["news"] = annotated.apply(live_sentiment.sentiment_label, axis=1)
-                    covered = int((annotated["n_articles"] > 0).sum())
-                    st.markdown(
-                        badge(f"${meta:.2f}", "muted") + " " +
-                        badge(f"{covered}/{len(annotated)} names with news coverage", "muted"),
-                        unsafe_allow_html=True)
-                    st.dataframe(
-                        annotated[["ticker", "news", "n_articles", "sentiment",
-                                   "price_impact_potential", "trend_direction",
-                                   "investor_confidence", "risk_profile_change", "summary"]],
-                        use_container_width=True, hide_index=True)
-                    st.caption("Scores range -2 to +2. Blank means no news found.")
+                annotated = table.copy()
+                annotated["news"] = annotated.apply(live_sentiment.sentiment_label, axis=1)
+                covered = int((annotated["n_articles"] > 0).sum())
+                st.markdown(
+                    badge(f"${meta:.2f}", "muted") + " " +
+                    badge(f"{covered}/{len(annotated)} names with news coverage", "muted"),
+                    unsafe_allow_html=True)
+                st.dataframe(
+                    annotated[["ticker", "news", "n_articles", "sentiment",
+                               "price_impact_potential", "trend_direction",
+                               "investor_confidence", "risk_profile_change", "summary"]],
+                    use_container_width=True, hide_index=True)
+                st.caption("Scores range -2 to +2. Blank means no news found.")
     else:
         st.markdown('<div class="sc-label">Today\'s stock picks</div>', unsafe_allow_html=True)
         eligible = (", ".join(positive_signals["signal_name"].map(display_name))
@@ -906,10 +982,9 @@ if active_tab == "Morning brief":
     # core/morning_brief.py alongside the candidate refresh. Purely
     # informational: never touches predicted_up_probability or the ranked
     # candidate list (spec §9 / §6 — no agent scores or predicts here).
-    morning_brief_path = PROJECT_ROOT / "candidates" / "morning_brief.json"
-
-    if morning_brief_path.exists():
-        brief = json.loads(morning_brief_path.read_text())
+    # brief / morning_brief_path are loaded once, up top, so the index hero
+    # cards above the nav can use them too.
+    if brief:
         as_of = brief.get("as_of", "unknown")
 
         st.markdown('<div class="sc-label">This morning</div>', unsafe_allow_html=True)
