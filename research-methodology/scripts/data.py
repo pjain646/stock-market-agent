@@ -875,10 +875,17 @@ _INSIDER_TRANSACTIONS_COLUMNS = [
     "is_officer", "officer_title", "transaction_date", "transaction_code",
     "acquired_or_disposed", "shares", "price_per_share",
 ]
+# Separate from the content cache above on purpose: this tracks WHEN a ticker's
+# filing list was last checked, not WHAT was found — needed because a ticker
+# with zero insider filings would never appear in the content cache at all,
+# and would otherwise get re-checked forever with no way to remember "already
+# looked, found nothing new."
+_INSIDER_CHECK_LOG_PATH = pathlib.Path("candidates") / "insider_transactions_check_log.parquet"
 
 
 def fetch_insider_transactions(tickers, max_form4_filings_per_ticker: int = 40,
-                               cache_path: pathlib.Path = _INSIDER_TRANSACTIONS_CACHE_PATH) -> pd.DataFrame:
+                               cache_path: pathlib.Path = _INSIDER_TRANSACTIONS_CACHE_PATH,
+                               check_log_path: pathlib.Path = _INSIDER_CHECK_LOG_PATH) -> pd.DataFrame:
     """Insider buys/sells (SEC Form 4) — what a company's own officers/directors trade.
 
     This is data the base model has no access to, and it's genuinely point-in-time:
@@ -891,11 +898,19 @@ def fetch_insider_transactions(tickers, max_form4_filings_per_ticker: int = 40,
     it never needs re-fetching), fetch each new one's XML, and parse the
     actual share transactions out of it.
 
-    Unlike prices, this genuinely doesn't need a periodic full refresh: SEC
-    filings aren't retroactively revised the way yfinance's adjusted closes
-    are. The only per-call cost that's unavoidable is checking each ticker's
-    filing LIST for anything new — cheap compared to fetching and parsing
-    filing documents, which is what actually took most of the time before.
+    Two-tier caching, because "is this filing's CONTENT already known" and "do
+    we need to CHECK this ticker again" are different questions:
+      - Content (accession number -> parsed transaction) never expires — a
+        filing's content can't change once filed.
+      - The filing LIST check itself (does this ticker have anything NEW)
+        still costs one real SEC request per ticker even when nothing's
+        changed, and was turning out to be the actual bulk of the daily
+        workflow's runtime (169 tickers x 1 request, every single day, even
+        on days with zero real work to do). So a ticker already checked
+        recently gets skipped entirely; every other Monday, ALL tickers get
+        re-checked (same biweekly cadence as the price/fundamentals caches).
+        Bounds staleness to ~2 weeks against a 180-day rolling window feature
+        that barely notices a 2-week lag.
 
     Returns a long DataFrame:
         [ticker, filing_date, insider_name, is_director, is_officer, officer_title,
@@ -903,6 +918,7 @@ def fetch_insider_transactions(tickers, max_form4_filings_per_ticker: int = 40,
     transaction_code meanings worth knowing: P = open-market purchase (bullish),
     S = open-market sale, A = grant/award, M = option exercise, F = tax withholding.
     """
+    import datetime
     import requests
     import xml.etree.ElementTree as ElementTree
 
@@ -915,11 +931,24 @@ def fetch_insider_transactions(tickers, max_form4_filings_per_ticker: int = 40,
     cached_accessions_by_ticker = ({} if cached.empty else
         {ticker_key: set(group["accession_number"]) for ticker_key, group in cached.groupby("ticker")})
 
+    check_log = (pd.read_parquet(check_log_path) if check_log_path.exists()
+                else pd.DataFrame(columns=["ticker", "last_checked"]))
+    already_checked_tickers = set(check_log["ticker"]) if not check_log.empty else set()
+
+    today = datetime.date.today()
+    is_refresh_day = today.weekday() == 0 and today.isocalendar()[1] % 2 == 0
+
     new_records = []
+    checked_this_call = []
     for ticker in tickers:
-        central_index_key = ticker_to_cik.get(ticker.upper())
+        ticker_upper = ticker.upper()
+        if ticker_upper in already_checked_tickers and not is_refresh_day:
+            continue  # checked recently enough — trust the content cache until the next biweekly refresh
+
+        central_index_key = ticker_to_cik.get(ticker_upper)
         if central_index_key is None:
             continue
+        checked_this_call.append(ticker_upper)
 
         # The submissions endpoint lists a company's recent filings as parallel
         # arrays — always fetched fresh: this is the only way to learn whether
@@ -931,7 +960,7 @@ def fetch_insider_transactions(tickers, max_form4_filings_per_ticker: int = 40,
         primary_documents = recent_filings.get("primaryDocument", [])
         filing_dates = recent_filings.get("filingDate", [])
 
-        already_fetched = cached_accessions_by_ticker.get(ticker.upper(), set())
+        already_fetched = cached_accessions_by_ticker.get(ticker_upper, set())
 
         form4_seen = 0
         for form_type, accession_number, primary_document, filing_date in zip(
@@ -972,7 +1001,7 @@ def fetch_insider_transactions(tickers, max_form4_filings_per_ticker: int = 40,
             # Non-derivative transactions are the actual common-share buys/sells.
             for transaction in ownership_document.findall(".//nonDerivativeTransaction"):
                 new_records.append({
-                    "ticker": ticker.upper(),
+                    "ticker": ticker_upper,
                     "accession_number": accession_number,
                     "filing_date": filing_date,
                     "insider_name": insider_name,
@@ -1007,6 +1036,18 @@ def fetch_insider_transactions(tickers, max_form4_filings_per_ticker: int = 40,
     if new_records:
         cache_path.parent.mkdir(parents=True, exist_ok=True)
         combined.to_parquet(cache_path, index=False)
+
+    if checked_this_call:
+        updated_log = (check_log[~check_log["ticker"].isin(checked_this_call)]
+                      if not check_log.empty else check_log)
+        new_log_rows = pd.DataFrame({
+            "ticker": checked_this_call,
+            "last_checked": [today.isoformat()] * len(checked_this_call),
+        })
+        log_frames = [frame for frame in (updated_log, new_log_rows) if not frame.empty]
+        updated_log = pd.concat(log_frames, ignore_index=True) if log_frames else updated_log
+        check_log_path.parent.mkdir(parents=True, exist_ok=True)
+        updated_log.to_parquet(check_log_path, index=False)
 
     requested_tickers = {t.upper() for t in tickers}
     return combined[combined["ticker"].isin(requested_tickers)].reset_index(drop=True)
