@@ -117,3 +117,17 @@ def display_industry_map():
     base = industry_map()
     return {t: ("Semiconductors" if t in _SEMICONDUCTOR_TICKERS else ind)
             for t, ind in base.items()}
+
+
+# Category labels for the "By industry" chart's watch-list-only tickers —
+# names Preyansh actually watches (memory, robotics/hardware) that aren't
+# part of UNIVERSE at all, so they need their own small price fetch and
+# label rather than a relabeling of an existing UNIVERSE entry (see
+# core/morning_brief.py's market_internals `extra_moves` param).
+WATCHLIST_ONLY_INDUSTRY_MAP = {
+    "MU": "Memory", "SNDK": "Memory", "DRAM": "Memory",
+    "RKLB": "Robotics & Hardware", "OUST": "Robotics & Hardware",
+    "IREN": "Robotics & Hardware", "USAR": "Robotics & Hardware",
+    "MRVL": "Semiconductors",
+    "PLTR": "Technology",
+}
