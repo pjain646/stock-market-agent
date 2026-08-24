@@ -58,11 +58,18 @@ MODEL = "claude-opus-4-8"
 
 
 def market_internals(panel: pd.DataFrame, industry_map: dict[str, str],
-                     top_n: int = 10) -> dict:
+                     top_n: int = 10, extra_moves: list[dict] | None = None) -> dict:
     """Day-over-day price moves across the whole universe.
 
     Zero new network calls — `panel` is the same price data
     `build_live_panel()` already fetched for candidate ranking.
+
+    `extra_moves` folds in already-computed ticker/industry/pct_change/as_of
+    dicts from OUTSIDE `panel` — used for watch-list-only names (memory,
+    robotics/hardware tickers like MU or RKLB) that aren't part of the
+    model's prediction universe `panel` is built from, so without this
+    they'd silently never appear in industry_moves OR gainers/losers no
+    matter how they're labeled.
 
     Returns {"gainers": [...], "losers": [...], "industry_moves": [...]},
     each a list of dicts (ticker/industry/pct_change/as_of, or
@@ -88,6 +95,8 @@ def market_internals(panel: pd.DataFrame, industry_map: dict[str, str],
             "pct_change": (latest_row["adj_close"] / prior_close) - 1.0,
             "as_of": latest_row["date"].strftime("%Y-%m-%d"),
         })
+    if extra_moves:
+        moves.extend(extra_moves)
 
     if not moves:
         return {"gainers": [], "losers": [], "industry_moves": []}
@@ -105,6 +114,48 @@ def market_internals(panel: pd.DataFrame, industry_map: dict[str, str],
         "losers": losers.to_dict("records"),
         "industry_moves": industry_moves.to_dict("records"),
     }
+
+
+def fetch_watchlist_only_moves(as_of=None) -> list[dict]:
+    """Day-over-day price moves for watch-list tickers that AREN'T part of
+    `config.UNIVERSE` (memory/robotics/hardware names Preyansh actually
+    watches — MU, RKLB, etc. — see `config.WATCHLIST_ONLY_INDUSTRY_MAP`).
+
+    `panel` (what `market_internals` normally reads) only ever covers
+    UNIVERSE tickers, so these names would otherwise silently never appear
+    in the "By industry" chart or gainers/losers no matter how they're
+    labeled. A short, separate fetch — just enough days for one
+    day-over-day comparison, not the full multi-year incremental cache the
+    prediction model itself needs.
+    """
+    sys.path.insert(0, str(PROJECT_ROOT / "research-methodology" / "scripts"))
+    from data import fetch_prices
+
+    tickers = [t for t in config.WATCHLIST_ONLY_INDUSTRY_MAP if t not in config.all_tickers()]
+    if not tickers:
+        return []
+
+    end_date = pd.Timestamp(as_of) if as_of else pd.Timestamp.today()
+    start_date = (end_date - pd.Timedelta(days=10)).date().isoformat()
+    prices = fetch_prices(tickers, start_date, end_date.date().isoformat())
+    if prices.empty:
+        return []
+
+    moves = []
+    for ticker, group in prices.sort_values("date").groupby("ticker"):
+        tail = group.tail(2)
+        if len(tail) < 2:
+            continue  # not enough recent history (new listing, illiquid)
+        prior_close, latest_row = tail.iloc[0]["adj_close"], tail.iloc[1]
+        if prior_close == 0:
+            continue
+        moves.append({
+            "ticker": ticker,
+            "industry": config.WATCHLIST_ONLY_INDUSTRY_MAP.get(ticker, "Unknown"),
+            "pct_change": (latest_row["adj_close"] / prior_close) - 1.0,
+            "as_of": latest_row["date"].strftime("%Y-%m-%d"),
+        })
+    return moves
 
 
 def select_brief_tickers(internals: dict, industry_map: dict[str, str],
@@ -402,8 +453,16 @@ def build_morning_brief(panel: pd.DataFrame, as_of=None) -> tuple[dict, float]:
     from .timing import timed
 
     industry_map = config.display_industry_map()
+    with timed("fetch_watchlist_only_moves (memory/robotics/hardware not in UNIVERSE)"):
+        # Never raises — a network hiccup here just means those tickers are
+        # briefly missing from the chart, not a broken morning brief.
+        try:
+            extra_moves = fetch_watchlist_only_moves(as_of)
+        except Exception as exc:
+            print(f"  watchlist-only moves fetch failed (non-fatal): {exc}")
+            extra_moves = []
     with timed("market_internals (pandas, no network)"):
-        internals = market_internals(panel, industry_map)
+        internals = market_internals(panel, industry_map, extra_moves=extra_moves)
 
     with timed("fetch_market_news (Finnhub)"):
         # Reuters dominates Finnhub's general-news feed in practice, and all
