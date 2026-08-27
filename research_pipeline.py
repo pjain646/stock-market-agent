@@ -133,11 +133,21 @@ def build_live_panel() -> pd.DataFrame:
     from data import fetch_prices_incremental
 
     tickers = config.all_tickers()
-    today = datetime.date.today().isoformat()
+    today_date = datetime.date.today()
+    today = today_date.isoformat()
+    # Every other Monday: reabsorb any yfinance adjusted-close drift that's
+    # built up (see fetch_prices_incremental's docstring) — cheap in a free,
+    # unlimited-quota API, just slower for that one day's run. ISO week number
+    # is even/odd deterministically, so this needs no stored state to know
+    # which Monday is "this one" vs "the other one."
+    biweekly_full_refresh = today_date.weekday() == 0 and today_date.isocalendar()[1] % 2 == 0
     print(f"fetching {len(tickers)} tickers {config.START}..{today} "
-          f"(incremental, cache: {PRICE_CACHE_PATH.relative_to(PROJECT_ROOT)}) ...")
-    with timed(f"fetch_prices_incremental ({len(tickers)} tickers)"):
-        panel = fetch_prices_incremental(tickers, config.START, today, PRICE_CACHE_PATH)
+          f"(incremental{', full biweekly refresh' if biweekly_full_refresh else ''}, "
+          f"cache: {PRICE_CACHE_PATH.relative_to(PROJECT_ROOT)}) ...")
+    with timed(f"fetch_prices_incremental ({len(tickers)} tickers"
+              f"{', full biweekly refresh' if biweekly_full_refresh else ''})"):
+        panel = fetch_prices_incremental(tickers, config.START, today, PRICE_CACHE_PATH,
+                                         full_refresh=biweekly_full_refresh)
     panel["industry"] = panel["ticker"].map(config.industry_map())
     panel = add_forward_direction_label(panel, forward_horizon_days=config.LABEL_HORIZON)
     panel["split"] = "live"

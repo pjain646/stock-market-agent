@@ -13,9 +13,12 @@ Honesty rules are enforced here in code, not left to the caller to remember:
     yet known — the point-in-time rule, in code.
 
 Functions:
-  fetch_prices             -- adjusted daily closes (yfinance)
-  fetch_prices_incremental -- fetch_prices, backed by a growing on-disk cache
-  fetch_fundamentals       -- point-in-time financial-statement line items (SEC EDGAR)
+  fetch_prices               -- adjusted daily closes (yfinance)
+  fetch_prices_incremental   -- fetch_prices, backed by a growing on-disk cache
+  fetch_fundamentals         -- point-in-time financial-statement line items
+                                (SEC EDGAR), cached per ticker, biweekly refresh
+  fetch_insider_transactions -- Form 4 insider buys/sells, cached by filing
+                                accession number (SEC EDGAR)
 """
 from __future__ import annotations
 
@@ -54,6 +57,15 @@ def fetch_prices(tickers, start_date, end_date) -> pd.DataFrame:
     if isinstance(adjusted_close_wide, pd.Series):
         adjusted_close_wide = adjusted_close_wide.to_frame(tickers[0])
 
+    # Every requested ticker failed (delisted/bad symbol/etc): yfinance hands
+    # back an empty frame with no real date index, so reset_index() below
+    # wouldn't produce a "Date" column and melt() would KeyError. Calling
+    # this with an all-failing ticker subset became possible once callers
+    # started fetching narrower ticker groups (e.g. just the tickers new to
+    # an incremental cache) instead of always the full universe at once.
+    if adjusted_close_wide.empty:
+        return pd.DataFrame(columns=["date", "ticker", "adj_close"])
+
     date_index_name = adjusted_close_wide.index.name or "Date"
     price_history_long = (
         adjusted_close_wide.reset_index()
@@ -66,21 +78,23 @@ def fetch_prices(tickers, start_date, end_date) -> pd.DataFrame:
 
 
 def fetch_prices_incremental(tickers, start_date, end_date, cache_path: pathlib.Path,
-                             refresh_window_days: int = 45) -> pd.DataFrame:
-    """Like `fetch_prices`, but backed by a growing on-disk cache so a daily
-    caller only downloads a trailing window instead of re-fetching a decade
-    of history every time.
+                             full_refresh: bool = False) -> pd.DataFrame:
+    """Like `fetch_prices`, but backed by a growing on-disk cache: a normal
+    call only downloads whatever's NEW since the cache's last date, instead
+    of re-fetching a decade of history every time.
 
-    yfinance's auto_adjust=True retroactively revises EVERY historical
-    adjusted close whenever a ticker has a new split/dividend — a naive
-    append-only cache would silently drift stale as that happens. Mitigated
-    by always re-fetching the trailing `refresh_window_days` days (covers
-    the near-total majority of corporate actions) rather than trusting the
-    cache for recent history; only older, effectively-settled history is
-    read straight from disk.
+    Old cached prices can go stale: yfinance's auto_adjust=True retroactively
+    revises EVERY historical adjusted close whenever a ticker has a new
+    split/dividend, and a pure append-only cache never re-checks old rows to
+    catch that. We accept that staleness day to day (dividends aren't common
+    enough to matter at daily resolution) and instead rely on the CALLER
+    passing `full_refresh=True` on a periodic cadence (see `build_live_panel`)
+    to re-fetch every known ticker's full history and wipe out any drift
+    that's built up since the last full refresh.
 
-    A ticker not yet in the cache (new to the universe) gets its full
-    `start_date..end_date` history fetched once, same as `fetch_prices`.
+    A ticker not yet in the cache (new to the universe) always gets its
+    full `start_date..end_date` history fetched, same as `fetch_prices`,
+    regardless of `full_refresh`.
     """
     cached = pd.read_parquet(cache_path) if cache_path.exists() else pd.DataFrame(
         columns=["date", "ticker", "adj_close"])
@@ -91,16 +105,20 @@ def fetch_prices_incremental(tickers, start_date, end_date, cache_path: pathlib.
     new_tickers = [t for t in tickers if t not in cached_tickers]
     known_tickers = [t for t in tickers if t in cached_tickers]
 
-    refresh_start = (pd.Timestamp(end_date) - pd.Timedelta(days=refresh_window_days)).date().isoformat()
-
     fetched_frames = []
     if new_tickers:
         fetched_frames.append(fetch_prices(new_tickers, start_date, end_date))
     if known_tickers:
-        fetched_frames.append(fetch_prices(known_tickers, refresh_start, end_date))
+        if full_refresh:
+            fetched_frames.append(fetch_prices(known_tickers, start_date, end_date))
+        else:
+            # 1 day of overlap, not a from-scratch re-fetch: just pull
+            # whatever trading day(s) landed since the cache was last saved.
+            since_last_cached = (cached["date"].max() - pd.Timedelta(days=1)).date().isoformat()
+            fetched_frames.append(fetch_prices(known_tickers, since_last_cached, end_date))
 
-    if fetched_frames:
-        frames_to_combine = [cached] + fetched_frames if not cached.empty else fetched_frames
+    frames_to_combine = [frame for frame in [cached] + fetched_frames if not frame.empty]
+    if frames_to_combine:
         combined = pd.concat(frames_to_combine, ignore_index=True)
         combined = (combined.drop_duplicates(subset=["ticker", "date"], keep="last")
                             .sort_values(["ticker", "date"]).reset_index(drop=True))
@@ -174,13 +192,37 @@ def _ticker_to_cik_map() -> dict:
     return _cached_ticker_to_cik_map
 
 
-def fetch_fundamentals(tickers, concepts=None, start_date=None, end_date=None) -> pd.DataFrame:
+_FUNDAMENTALS_CACHE_PATH = pathlib.Path("candidates") / "fundamentals_cache.parquet"
+_FUNDAMENTALS_COLUMNS = [
+    "ticker", "concept", "unit", "period_start", "period_end", "filed_date",
+    "value", "fiscal_year", "fiscal_period", "form",
+]
+
+
+def fetch_fundamentals(tickers, concepts=None, start_date=None, end_date=None,
+                       cache_path: pathlib.Path = _FUNDAMENTALS_CACHE_PATH) -> pd.DataFrame:
     """Point-in-time financial-statement values from SEC EDGAR.
 
     For each ticker, pulls the requested XBRL concepts and returns every reported
     value WITH the date it was filed — which is what makes this point-in-time:
     a downstream feature can use a value only as of its `filed_date`, never
     earlier.
+
+    Cached like the price/insider caches, for the same reason: a company only
+    files a new 10-Q/10-K (the only things that change this data) at most ~4
+    times a year, so re-fetching all 169 tickers every single day is mostly
+    downloading data we already have. A ticker already in the cache is served
+    straight from disk; only a ticker missing from the cache gets fetched.
+    Every other Monday, ALL requested tickers get a full re-fetch instead (same
+    biweekly cadence as the price cache), to pick up whatever's been newly
+    filed since the last refresh — bounding staleness to ~2 weeks against a
+    real filing cadence of ~3 months.
+
+    We cache EVERY concept SEC returns for a ticker, not just the ones this
+    particular call asked for — company-facts comes back as one all-concepts
+    blob per ticker regardless, so caching the whole thing means a later call
+    asking for different concepts on an already-cached ticker still hits cache
+    instead of re-fetching.
 
     Args:
         tickers: ticker string or list of tickers.
@@ -199,31 +241,41 @@ def fetch_fundamentals(tickers, concepts=None, start_date=None, end_date=None) -
         year-to-date totals under the same `period_end`, and `period_start`
         is what tells them apart.)
     """
+    import datetime
+
     if isinstance(tickers, str):
         tickers = [tickers]
     concepts = concepts or DEFAULT_FUNDAMENTAL_CONCEPTS
+    requested_tickers = {t.upper() for t in tickers}
+
+    cached = (pd.read_parquet(cache_path) if cache_path.exists()
+             else pd.DataFrame(columns=_FUNDAMENTALS_COLUMNS))
+    cached_tickers = set(cached["ticker"].unique()) if not cached.empty else set()
+
+    today = datetime.date.today()
+    full_refresh = today.weekday() == 0 and today.isocalendar()[1] % 2 == 0
+    tickers_to_fetch = (sorted(requested_tickers) if full_refresh
+                        else sorted(requested_tickers - cached_tickers))
 
     ticker_to_cik = _ticker_to_cik_map()
     fundamental_records = []
 
-    for ticker in tickers:
-        central_index_key = ticker_to_cik.get(ticker.upper())
+    for ticker in tickers_to_fetch:
+        central_index_key = ticker_to_cik.get(ticker)
         if central_index_key is None:
             continue  # ticker not found in SEC's list (e.g., a non-US or private name)
 
         company_facts = _get_json_from_sec(_SEC_COMPANY_FACTS_URL.format(cik=central_index_key))
         us_gaap_facts = company_facts.get("facts", {}).get("us-gaap", {})
 
-        for concept in concepts:
-            concept_facts = us_gaap_facts.get(concept)
-            if not concept_facts:
-                continue  # this company doesn't report this particular tag
-
+        # Every concept SEC reports for this ticker, not just `concepts` —
+        # see the docstring on why the cache stores the whole thing.
+        for concept, concept_facts in us_gaap_facts.items():
             # A concept reports values under one or more units (e.g. USD, USD/shares).
             for unit_name, reported_values in concept_facts.get("units", {}).items():
                 for reported_value in reported_values:
                     fundamental_records.append({
-                        "ticker": ticker.upper(),
+                        "ticker": ticker,
                         "concept": concept,
                         "unit": unit_name,
                         "period_start": reported_value.get("start"),   # None for instant concepts (e.g. Assets)
@@ -237,13 +289,27 @@ def fetch_fundamentals(tickers, concepts=None, start_date=None, end_date=None) -
 
         time.sleep(0.2)  # be polite to SEC's servers (well under their rate limit)
 
-    fundamentals = pd.DataFrame.from_records(fundamental_records)
-    if fundamentals.empty:
-        return fundamentals
+    new_frame = pd.DataFrame.from_records(fundamental_records, columns=_FUNDAMENTALS_COLUMNS)
+    if tickers_to_fetch:
+        # Drop the old cached rows for every ticker we just re-fetched (a
+        # freshly-filed value should fully replace what was cached before,
+        # not sit alongside it) before adding the new results back in.
+        cached = cached[~cached["ticker"].isin(tickers_to_fetch)] if not cached.empty else cached
+        frames_to_combine = [frame for frame in (cached, new_frame) if not frame.empty]
+        combined = pd.concat(frames_to_combine, ignore_index=True) if frames_to_combine else new_frame
+        cache_path.parent.mkdir(parents=True, exist_ok=True)
+        combined.to_parquet(cache_path, index=False)
+    else:
+        combined = cached
 
-    fundamentals["period_start"] = pd.to_datetime(fundamentals["period_start"])
-    fundamentals["period_end"] = pd.to_datetime(fundamentals["period_end"])
-    fundamentals["filed_date"] = pd.to_datetime(fundamentals["filed_date"])
+    if combined.empty:
+        return combined
+
+    combined["period_start"] = pd.to_datetime(combined["period_start"])
+    combined["period_end"] = pd.to_datetime(combined["period_end"])
+    combined["filed_date"] = pd.to_datetime(combined["filed_date"])
+
+    fundamentals = combined[combined["ticker"].isin(requested_tickers) & combined["concept"].isin(concepts)]
     if start_date is not None:
         fundamentals = fundamentals[fundamentals["filed_date"] >= pd.to_datetime(start_date)]
     if end_date is not None:
@@ -797,15 +863,54 @@ def _strip_xml_namespaces(xml_root):
     return xml_root
 
 
-def fetch_insider_transactions(tickers, max_form4_filings_per_ticker: int = 40) -> pd.DataFrame:
+# Project-relative, not ~/.cache like the other fetchers: this cache needs to
+# survive across GitHub Actions runs (each one a fresh checkout with no local
+# disk to persist to), same reasoning as PRICE_CACHE_PATH in research_pipeline.py.
+# Resolved against the CURRENT WORKING DIRECTORY at call time, so it lands in
+# the real project's committed candidates/ dir as long as the caller (research
+# or live) runs from the project root, which both already do.
+_INSIDER_TRANSACTIONS_CACHE_PATH = pathlib.Path("candidates") / "insider_transactions_cache.parquet"
+_INSIDER_TRANSACTIONS_COLUMNS = [
+    "ticker", "accession_number", "filing_date", "insider_name", "is_director",
+    "is_officer", "officer_title", "transaction_date", "transaction_code",
+    "acquired_or_disposed", "shares", "price_per_share",
+]
+# Separate from the content cache above on purpose: this tracks WHEN a ticker's
+# filing list was last checked, not WHAT was found — needed because a ticker
+# with zero insider filings would never appear in the content cache at all,
+# and would otherwise get re-checked forever with no way to remember "already
+# looked, found nothing new."
+_INSIDER_CHECK_LOG_PATH = pathlib.Path("candidates") / "insider_transactions_check_log.parquet"
+
+
+def fetch_insider_transactions(tickers, max_form4_filings_per_ticker: int = 40,
+                               cache_path: pathlib.Path = _INSIDER_TRANSACTIONS_CACHE_PATH,
+                               check_log_path: pathlib.Path = _INSIDER_CHECK_LOG_PATH) -> pd.DataFrame:
     """Insider buys/sells (SEC Form 4) — what a company's own officers/directors trade.
 
     This is data the base model has no access to, and it's genuinely point-in-time:
     Form 4 must be filed within ~2 business days of the trade, so the filing date
     is when the information became public.
 
-    How it works: look up the company's recent filings, keep the Form 4s, fetch
-    each one's XML, and parse the actual share transactions out of it.
+    How it works: look up the company's recent filings, keep the Form 4s NOT
+    already in the cache (each filing's accession number is a permanent,
+    unique ID — once fetched and parsed, a filing's content never changes, so
+    it never needs re-fetching), fetch each new one's XML, and parse the
+    actual share transactions out of it.
+
+    Two-tier caching, because "is this filing's CONTENT already known" and "do
+    we need to CHECK this ticker again" are different questions:
+      - Content (accession number -> parsed transaction) never expires — a
+        filing's content can't change once filed.
+      - The filing LIST check itself (does this ticker have anything NEW)
+        still costs one real SEC request per ticker even when nothing's
+        changed, and was turning out to be the actual bulk of the daily
+        workflow's runtime (169 tickers x 1 request, every single day, even
+        on days with zero real work to do). So a ticker already checked
+        recently gets skipped entirely; every other Monday, ALL tickers get
+        re-checked (same biweekly cadence as the price/fundamentals caches).
+        Bounds staleness to ~2 weeks against a 180-day rolling window feature
+        that barely notices a 2-week lag.
 
     Returns a long DataFrame:
         [ticker, filing_date, insider_name, is_director, is_officer, officer_title,
@@ -813,26 +918,49 @@ def fetch_insider_transactions(tickers, max_form4_filings_per_ticker: int = 40) 
     transaction_code meanings worth knowing: P = open-market purchase (bullish),
     S = open-market sale, A = grant/award, M = option exercise, F = tax withholding.
     """
+    import datetime
     import requests
     import xml.etree.ElementTree as ElementTree
 
     if isinstance(tickers, str):
         tickers = [tickers]
     ticker_to_cik = _ticker_to_cik_map()
-    insider_records = []
 
+    cached = (pd.read_parquet(cache_path) if cache_path.exists()
+             else pd.DataFrame(columns=_INSIDER_TRANSACTIONS_COLUMNS))
+    cached_accessions_by_ticker = ({} if cached.empty else
+        {ticker_key: set(group["accession_number"]) for ticker_key, group in cached.groupby("ticker")})
+
+    check_log = (pd.read_parquet(check_log_path) if check_log_path.exists()
+                else pd.DataFrame(columns=["ticker", "last_checked"]))
+    already_checked_tickers = set(check_log["ticker"]) if not check_log.empty else set()
+
+    today = datetime.date.today()
+    is_refresh_day = today.weekday() == 0 and today.isocalendar()[1] % 2 == 0
+
+    new_records = []
+    checked_this_call = []
     for ticker in tickers:
-        central_index_key = ticker_to_cik.get(ticker.upper())
+        ticker_upper = ticker.upper()
+        if ticker_upper in already_checked_tickers and not is_refresh_day:
+            continue  # checked recently enough — trust the content cache until the next biweekly refresh
+
+        central_index_key = ticker_to_cik.get(ticker_upper)
         if central_index_key is None:
             continue
+        checked_this_call.append(ticker_upper)
 
-        # The submissions endpoint lists a company's recent filings as parallel arrays.
+        # The submissions endpoint lists a company's recent filings as parallel
+        # arrays — always fetched fresh: this is the only way to learn whether
+        # a NEW Form 4 landed since last time.
         submissions = _get_json_from_sec(_SEC_SUBMISSIONS_URL.format(cik=central_index_key))
         recent_filings = submissions.get("filings", {}).get("recent", {})
         form_types = recent_filings.get("form", [])
         accession_numbers = recent_filings.get("accessionNumber", [])
         primary_documents = recent_filings.get("primaryDocument", [])
         filing_dates = recent_filings.get("filingDate", [])
+
+        already_fetched = cached_accessions_by_ticker.get(ticker_upper, set())
 
         form4_seen = 0
         for form_type, accession_number, primary_document, filing_date in zip(
@@ -843,6 +971,9 @@ def fetch_insider_transactions(tickers, max_form4_filings_per_ticker: int = 40) 
             if form4_seen >= max_form4_filings_per_ticker:
                 break
             form4_seen += 1
+
+            if accession_number in already_fetched:
+                continue  # this exact filing's content is already cached — nothing to redo
 
             # primaryDocument often points to the styled HTML view in an "xsl.../"
             # subfolder; the raw, parseable XML is the same filename at the accession
@@ -869,8 +1000,9 @@ def fetch_insider_transactions(tickers, max_form4_filings_per_ticker: int = 40) 
 
             # Non-derivative transactions are the actual common-share buys/sells.
             for transaction in ownership_document.findall(".//nonDerivativeTransaction"):
-                insider_records.append({
-                    "ticker": ticker.upper(),
+                new_records.append({
+                    "ticker": ticker_upper,
+                    "accession_number": accession_number,
                     "filing_date": filing_date,
                     "insider_name": insider_name,
                     "is_director": is_director in ("1", "true"),
@@ -888,20 +1020,37 @@ def fetch_insider_transactions(tickers, max_form4_filings_per_ticker: int = 40) 
                 })
             time.sleep(0.12)  # stay well under SEC's rate limit
 
-    insider_transactions = pd.DataFrame.from_records(insider_records)
-    if insider_transactions.empty:
-        return insider_transactions
+    new_frame = pd.DataFrame.from_records(new_records, columns=_INSIDER_TRANSACTIONS_COLUMNS)
+    frames_to_combine = [frame for frame in (cached, new_frame) if not frame.empty]
+    combined = pd.concat(frames_to_combine, ignore_index=True) if frames_to_combine else cached
 
-    # Make dates and numbers real types instead of strings.
-    insider_transactions["filing_date"] = pd.to_datetime(insider_transactions["filing_date"])
-    insider_transactions["transaction_date"] = pd.to_datetime(
-        insider_transactions["transaction_date"], errors="coerce"
-    )
-    for numeric_column in ("shares", "price_per_share"):
-        insider_transactions[numeric_column] = pd.to_numeric(
-            insider_transactions[numeric_column], errors="coerce"
-        )
-    return insider_transactions.sort_values(["ticker", "transaction_date"]).reset_index(drop=True)
+    if not combined.empty:
+        # Make dates and numbers real types instead of strings (idempotent —
+        # cached rows are already typed correctly from the last save).
+        combined["filing_date"] = pd.to_datetime(combined["filing_date"])
+        combined["transaction_date"] = pd.to_datetime(combined["transaction_date"], errors="coerce")
+        for numeric_column in ("shares", "price_per_share"):
+            combined[numeric_column] = pd.to_numeric(combined[numeric_column], errors="coerce")
+        combined = combined.sort_values(["ticker", "transaction_date"]).reset_index(drop=True)
+
+    if new_records:
+        cache_path.parent.mkdir(parents=True, exist_ok=True)
+        combined.to_parquet(cache_path, index=False)
+
+    if checked_this_call:
+        updated_log = (check_log[~check_log["ticker"].isin(checked_this_call)]
+                      if not check_log.empty else check_log)
+        new_log_rows = pd.DataFrame({
+            "ticker": checked_this_call,
+            "last_checked": [today.isoformat()] * len(checked_this_call),
+        })
+        log_frames = [frame for frame in (updated_log, new_log_rows) if not frame.empty]
+        updated_log = pd.concat(log_frames, ignore_index=True) if log_frames else updated_log
+        check_log_path.parent.mkdir(parents=True, exist_ok=True)
+        updated_log.to_parquet(check_log_path, index=False)
+
+    requested_tickers = {t.upper() for t in tickers}
+    return combined[combined["ticker"].isin(requested_tickers)].reset_index(drop=True)
 
 
 def fetch_institutional_holdings_13f(tickers):  # pragma: no cover - scaffold
