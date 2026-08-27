@@ -1,13 +1,13 @@
 {
   "as_of": "2026-08-27",
   "macro_bullets": [
-    "Oil rose more than $1 as the White House said no US-Iran talks are happening, with the six-month war keeping the Strait of Hormuz and OPEC+ influence in focus.",
-    "A hotter-than-expected PCE print stirred rate-hike bets, with a Kansas City Fed official calling inflation 'stubborn' and 'sticky' and policy not restrictive.",
-    "Markets await Fed nominee Warsh's Jackson Hole speech, as Bessent and Warsh publicly diverge over who should set the price of money.",
-    "A software and AI-chip rally extended after strong earnings, with Salesforce surging ~20% and Nvidia's results in focus.",
-    "Family offices are leaning bullish on stocks even as foreign money pulls back from emerging markets like India."
+    "Oil settled up ~2% after Trump rejected a return to Iran ceasefire terms, with the war now at the six-month mark.",
+    "Markets await Fed Chair Warsh's Jackson Hole speech, while Kansas City Fed's Schmid calls inflation 'stubborn' and policy not restrictive.",
+    "A hotter-than-expected PCE print stirred rate-hike bets and pressured the Nasdaq.",
+    "Big AI-trade tests dominate as Nvidia, Salesforce and CrowdStrike earnings land, with Salesforce rocketing ~20%.",
+    "Iran-linked cyber threats are spreading, hitting a US water-sector supplier and medical-device maker Boston Scientific."
   ],
-  "internals_narrative": "Energy and industrials led (WMB +4.7%, KMI +3.5%, Industrials +1.2%, Energy +1.0%) on the oil bid, while Robotics & Hardware (-2.7%) and Pharma (-0.5%) lagged. Losers were concentrated in AI/crypto-infrastructure and healthcare names (IREN -6.2%, LLY -3.6%, BSX -3.4%, INTU -3.2%, ACN -3.0%).",
+  "internals_narrative": "Industrials (+1.2%) and Energy (+1.0%) led sectors, powered by midstream names WMB (+4.7%) and KMI (+3.5%), while Robotics & Hardware (-2.7%) and Pharma (-0.5%) lagged, with IREN (-6.2%) and LLY (-3.6%) the biggest individual decliners.",
   "gainers": [
     {
       "ticker": "WMB",
@@ -191,47 +191,33 @@
     }
   ],
   "ticker_notes": {
-    "WMB": "Strong midstream Q2 2026 earnings lifted the full-year outlook as war-stranded Qatari gas boosts US sales.",
-    "KMI": "Analysts frame the recent consolidation as an opportunity before the next leg higher.",
-    "ORCL": "Oracle presented at Deutsche Bank's 2026 Technology Conference.",
-    "PLTR": "Rose alongside a broad software rally led by Salesforce's ~20% jump.",
-    "IREN": "Slid ahead of its Q4 print, already down 48% from highs, with focus on data-center monetization.",
-    "INTU": "Oppenheimer kept its Outperform rating but cut its price target to $380.",
-    "ACN": "Traders eyed Accenture after a report a US representative sold up to $140K of the stock.",
-    "NEM": "Downgraded as analysts say the market has finally caught up to the shares.",
-    "SCHW": "Weighed by news Vanguard is buying wealth-management platform Altruist in a $4 billion deal.",
-    "BSX": "Shares fell as the medical-device maker was hit by a cyberattack.",
-    "AMD": "Stock drew attention amid renewed debate over the AI trade after Nvidia's results.",
-    "SBUX": "Presenting a strong technical breakout setup into pumpkin-spice-latte season."
+    "WMB": "Strong Q2 midstream earnings boosted its full-year outlook amid war-driven US gas demand.",
+    "KMI": "Analysts frame the recent consolidation as a buying opportunity before the next leg higher.",
+    "PLTR": "Rode the broad software rally led by Salesforce's ~20% surge.",
+    "SBUX": "Flagged for a strong technical breakout setup.",
+    "HON": "Highlighted as 'Stock of the Day' on a potential reversal.",
+    "IREN": "Shares slid after Q4 revenue and adjusted EPS missed estimates.",
+    "LLY": "Pulled back from record highs even as a study showed Zepbound cuts hospital visits and costs.",
+    "BSX": "Falling after being hit by a cyberattack.",
+    "INTU": "Oppenheimer kept Outperform but cut its price target to $380.",
+    "ACN": "Stock in focus with fresh coverage on what's driving Accenture.",
+    "NEM": "Downgraded as analysts say the market has finally caught up.",
+    "SCHW": "Added Solana, Avalanche and Chainlink to its crypto platform."
   },
   "articles": [
     {
-      "ticker": "WMB",
-      "headline": "Nasdaq 100 Falls as Hot PCE Inflation Stirs Rate-Hike Bets: Stock Market Today",
+      "ticker": "LLY",
+      "headline": "Obesity Drug Alert: Eli Lilly Study Shows Sustained Zepbound Treatment Reduces Hospital Visits, Medical Costs",
       "source": "Benzinga",
-      "url": "https://finnhub.io/api/news?id=cf087cbfcf6442c6f145fa7516f2c7ae3657b296cc038e226f8f91a561b7c4f8",
-      "datetime": "2026-08-26T12:58:34"
-    },
-    {
-      "ticker": "ORCL",
-      "headline": "Nvidia's Unusual Move Answers AI Trade\u2019s Key Question; $40 Trillion US Debt Bomb Ticks; Key Fed Speech Awaited",
-      "source": "Benzinga",
-      "url": "https://finnhub.io/api/news?id=586f505d7e72db784aca8e169728a1f0dfc9b7687c426d0c491ba3ce7f044961",
-      "datetime": "2026-08-27T13:00:02"
+      "url": "https://finnhub.io/api/news?id=af7b54569dca086bb3a305a5fa422cbfcb2de4ead3840ccbd047df91388b861a",
+      "datetime": "2026-08-26T15:30:19"
     },
     {
       "ticker": null,
-      "headline": "Kansas City Fed's Schmid says inflation 'stubborn' and 'sticky,' policy rate not restrictive",
+      "headline": "Okta pops 15% after topping estimates as AI threat spikes demand for identity security",
       "source": "CNBC",
-      "url": "https://www.cnbc.com/2026/08/27/kansas-city-feds-schmid-says-inflation-stubborn-and-sticky-policy-rate-not-restrictive.html",
-      "datetime": "2026-08-27T12:20:30"
-    },
-    {
-      "ticker": null,
-      "headline": "What Warsh will say and how the market will react, according to prediction markets",
-      "source": "CNBC",
-      "url": "https://www.cnbc.com/2026/08/27/what-warsh-will-say-and-how-the-market-will-react-according-to-prediction-markets.html",
-      "datetime": "2026-08-27T18:14:57"
+      "url": "https://www.cnbc.com/2026/08/26/okta-okta-earnings-q2-2027.html",
+      "datetime": "2026-08-26T20:13:25"
     },
     {
       "ticker": null,
@@ -241,11 +227,18 @@
       "datetime": "2026-08-26T11:56:29"
     },
     {
-      "ticker": null,
-      "headline": "Okta pops 15% after topping estimates as AI threat spikes demand for identity security",
-      "source": "CNBC",
-      "url": "https://www.cnbc.com/2026/08/26/okta-okta-earnings-q2-2027.html",
-      "datetime": "2026-08-26T20:13:25"
+      "ticker": "SCHW",
+      "headline": "Solana Surges 5% as Charles Schwab Adds SOL, AVAX, LINK to Crypto Platform",
+      "source": "Benzinga",
+      "url": "https://finnhub.io/api/news?id=46e32822d2d548f60ad0758894647ecf9e03a8c3b2d7ae685146d05119616ec1",
+      "datetime": "2026-08-27T12:31:05"
+    },
+    {
+      "ticker": "WMB",
+      "headline": "Nasdaq 100 Falls as Hot PCE Inflation Stirs Rate-Hike Bets: Stock Market Today",
+      "source": "Benzinga",
+      "url": "https://finnhub.io/api/news?id=cf087cbfcf6442c6f145fa7516f2c7ae3657b296cc038e226f8f91a561b7c4f8",
+      "datetime": "2026-08-26T12:58:34"
     },
     {
       "ticker": "INTU",
@@ -262,13 +255,6 @@
       "datetime": "2026-08-27T02:38:59"
     },
     {
-      "ticker": "SCHW",
-      "headline": "'Vanguard Buys Wealth Management Platform Altruist in $4 Billion Deal' - WSJ Exclusive",
-      "source": "Benzinga",
-      "url": "https://finnhub.io/api/news?id=0633d849a699b11df8dd697168a5372b10f14d682874c6419856bdb7c8fc3620",
-      "datetime": "2026-08-26T07:53:21"
-    },
-    {
       "ticker": "ACN",
       "headline": "What's Going On With Accenture Stock Thursday?",
       "source": "Benzinga",
@@ -277,17 +263,38 @@
     },
     {
       "ticker": null,
-      "headline": "What's expected at Apple's September event \u2014 plus, an uneven rally in AI stocks",
+      "headline": "Nvidia, CrowdStike and Salesforce face big tests tonight. Here's what we need to see",
       "source": "CNBC",
-      "url": "https://www.cnbc.com/2026/08/27/what-to-expect-from-apples-september-event-and-whats-driving-rally.html",
-      "datetime": "2026-08-27T18:48:33"
+      "url": "https://www.cnbc.com/2026/08/26/nvidia-crowdstike-and-salesforce-face-big-tests-tonight.html",
+      "datetime": "2026-08-26T17:07:35"
     },
     {
-      "ticker": "WMB",
-      "headline": "Reported Earlier, 'As war strands Qatari gas for 6 months, US sales rise and European stocks plummet' - Reuters",
+      "ticker": "ORCL",
+      "headline": "Nvidia's Unusual Move Answers AI Trade\u2019s Key Question; $40 Trillion US Debt Bomb Ticks; Key Fed Speech Awaited",
       "source": "Benzinga",
-      "url": "https://finnhub.io/api/news?id=760d01bac3baa1bbd4563b6d1bbac7ac54dfa3b4b858870a19c24d6d79ac1bbd",
-      "datetime": "2026-08-26T10:34:55"
+      "url": "https://finnhub.io/api/news?id=586f505d7e72db784aca8e169728a1f0dfc9b7687c426d0c491ba3ce7f044961",
+      "datetime": "2026-08-27T13:00:02"
+    },
+    {
+      "ticker": null,
+      "headline": "What Warsh will say and how the market will react, according to prediction markets",
+      "source": "CNBC",
+      "url": "https://www.cnbc.com/2026/08/27/what-warsh-will-say-and-how-the-market-will-react-according-to-prediction-markets.html",
+      "datetime": "2026-08-27T18:14:57"
+    },
+    {
+      "ticker": "LLY",
+      "headline": "Eli Lilly Stock Pulls Back After Hitting Record Highs Last Week",
+      "source": "Benzinga",
+      "url": "https://finnhub.io/api/news?id=2417c6dbc1a69196f6ec518fb56836f7b71b7e586841422dd3d244ecae668de7",
+      "datetime": "2026-08-26T14:40:02"
+    },
+    {
+      "ticker": null,
+      "headline": "Micron elevates two executives. Plus, what the Meta settlement means for its top line",
+      "source": "CNBC",
+      "url": "https://www.cnbc.com/2026/08/26/micron-elevates-two-executives-plus-what-the-meta-settlement-means-for-its-top-line.html",
+      "datetime": "2026-08-26T18:31:26"
     }
   ],
   "watchlist_articles": {
@@ -304,6 +311,13 @@
         "source": "Benzinga",
         "url": "https://finnhub.io/api/news?id=bd66963e476ca2fb1ee267ca5b153ab944593e89826bf2b31ce20dc36f995695",
         "datetime": "2026-08-27T14:46:13"
+      },
+      {
+        "ticker": "TSLA",
+        "headline": "Tesla Stock Is Trending Higher Today: What's Happening?",
+        "source": "Benzinga",
+        "url": "https://finnhub.io/api/news?id=4af467d681292390f4c3f39d10dd044f47c9c9a79201c3001a141a1e195e9ca0",
+        "datetime": "2026-08-27T13:42:46"
       }
     ],
     "AMZN": [],
@@ -377,17 +391,24 @@
     "IREN": [
       {
         "ticker": "IREN",
-        "headline": "IREN Q4 Preview: Stock Down 48% From Highs, Will Data Center Monetization Shine Through in Earnings?",
+        "headline": "Iris Energy Q4 Adj. EPS $(0.74) Misses $(0.49) Estimate, Sales $137.200M Miss $142.320M Estimate",
         "source": "Benzinga",
-        "url": "https://finnhub.io/api/news?id=c12317718e8164934ef8c585f8abef01497af561e7b00eea29d99fcff28effd2",
-        "datetime": "2026-08-26T16:40:18"
+        "url": "https://finnhub.io/api/news?id=ae8b66cb0cf1b557b3709b3b06ce8a343a889d82052ac05a2b09aa30be03b448",
+        "datetime": "2026-08-27T16:38:49"
       },
       {
         "ticker": "IREN",
-        "headline": "Marvell Technology Could Swing $20.8 Billion After Earnings",
+        "headline": "IREN Stock Wavers on Q4 Revenue Miss: Details",
         "source": "Benzinga",
-        "url": "https://finnhub.io/api/news?id=5de354d13730a93ee429314425e07f00cd7acbab3adf57ab4bc021f564f1d6f0",
-        "datetime": "2026-08-26T15:30:15"
+        "url": "https://finnhub.io/api/news?id=7cbd28b02589d27d88f1ffc40e910748470f0eb3788fc678196078594b954b7a",
+        "datetime": "2026-08-27T16:36:49"
+      },
+      {
+        "ticker": "IREN",
+        "headline": "Iris Energy Q4 Sales $137.200M Miss $142.320M Estimate",
+        "source": "Benzinga",
+        "url": "https://finnhub.io/api/news?id=cbc3854d97cfc1032d9d11c7ad563405d3bb32e030319ebf01f898b83e1e6b2a",
+        "datetime": "2026-08-27T16:12:00"
       }
     ],
     "OUST": [
