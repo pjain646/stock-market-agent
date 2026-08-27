@@ -982,6 +982,61 @@ if active_tab == "Stock predictions":
         st.download_button("Download CSV", candidate_rows.to_csv(index=False),
                            file_name=f"candidates_{as_of_date}.csv", mime="text/csv")
 
+        # ---------------- diversify beyond the top 10 -----------------------
+        # The top 10 above is the unconstrained best of the whole list — this
+        # section never swaps anything into it. It only ADDS a transparent
+        # view of industries the top 10 doesn't touch, each stock shown with
+        # its real overall rank so nothing here masquerades as equivalent to
+        # an actual top-10 pick. A 50% floor (the model's own "more likely up
+        # than not" line) keeps a weak industry from padding out to 3 just to
+        # fill the card — see the Aug-26 chat for why this shape, not a
+        # forced per-industry cap on the main list.
+        st.markdown('<div class="sc-label" style="margin-top:1.6rem">'
+                    'Diversify beyond your top 10</div>', unsafe_allow_html=True)
+        st.markdown(
+            f'<p style="color:{ZINC["500"]}; font-size:.85rem; margin-bottom:.8rem;">'
+            "Nothing above is forced to spread across industries — it's the unconstrained "
+            "best 10. If you'd rather diversify, here's the best pick(s) in every industry "
+            "not already in your top 10, each with its real overall rank so you can judge the "
+            "tradeoff yourself. Only shown if the model still calls it more-likely-up-than-not "
+            "— an industry with no such stock today just doesn't appear.</p>",
+            unsafe_allow_html=True)
+
+        top10_industries = set(ranked_rows.head(10)["industry"])
+        rank_by_ticker = {t: i + 1 for i, t in enumerate(ranked_rows["ticker"])}
+        qualifying = ranked_rows[(~ranked_rows["industry"].isin(top10_industries)) &
+                                 (ranked_rows["predicted_up_probability"] > 0.5)]
+
+        industry_groups = [
+            (industry, group.nlargest(3, "predicted_up_probability"))
+            for industry, group in qualifying.groupby("industry")
+        ]
+        industry_groups.sort(key=lambda pair: pair[1]["predicted_up_probability"].max(),
+                            reverse=True)
+
+        if industry_groups:
+            cards_html = []
+            for industry, top3 in industry_groups:
+                rows_html = "".join(
+                    f'<div style="display:flex; justify-content:space-between; align-items:baseline; '
+                    f'font-size:.82rem; padding:.3rem 0; border-top:1px solid {ZINC["200"]};">'
+                    f'<span style="font-weight:600;">{row.ticker}</span>'
+                    f'<span style="color:{ZINC["500"]}; font-size:.74rem;">#{rank_by_ticker[row.ticker]} '
+                    f'of {len(ranked_rows)}</span>'
+                    f'<span style="font-variant-numeric:tabular-nums;">{row.predicted_up_probability:.1%}</span>'
+                    f'</div>'
+                    for row in top3.itertuples()
+                )
+                cards_html.append(
+                    f'<div class="sc-card"><div class="sc-label" style="margin-bottom:.2rem;">'
+                    f'{industry}</div>{rows_html}</div>'
+                )
+            st.markdown(f'<div class="watch-grid">{"".join(cards_html)}</div>', unsafe_allow_html=True)
+        else:
+            st.markdown(f'<p style="color:{ZINC["500"]}; font-size:.82rem;">Every industry with a '
+                        "qualifying pick today is already represented in your top 10.</p>",
+                        unsafe_allow_html=True)
+
         # ---------------- live news sentiment (annotation ONLY) -------------
         st.markdown('<div class="sc-label" style="margin-top:1.4rem">'
                     'Recent news on these stocks</div>', unsafe_allow_html=True)
