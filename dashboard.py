@@ -24,6 +24,7 @@ import os
 import pathlib
 import re
 import sqlite3
+import sys
 
 import altair as alt
 import numpy as np
@@ -1036,6 +1037,105 @@ if active_tab == "Stock predictions":
             st.markdown(f'<p style="color:{ZINC["500"]}; font-size:.82rem;">Every industry with a '
                         "qualifying pick today is already represented in your top 10.</p>",
                         unsafe_allow_html=True)
+
+        # ---------------- retrospective: were past picks actually right? -----
+        st.markdown('<div class="sc-label" style="margin-top:1.6rem">'
+                    'Retrospective — were past picks actually right?</div>', unsafe_allow_html=True)
+
+        @st.cache_data(ttl=3600)
+        def _load_retrospective():
+            from core import retrospective
+
+            sys.path.insert(0, str(PROJECT_ROOT / "research-methodology" / "scripts"))
+            from data import fetch_prices
+
+            return retrospective.build_retrospective(
+                PROJECT_ROOT / "candidates" / "picks_history.csv",
+                PROJECT_ROOT / "candidates" / "price_cache.parquet",
+                fetch_prices,
+            )
+
+        retro = _load_retrospective()
+
+        if not retro["graded"] and retro["n_logged_cohorts"] == 0:
+            st.markdown(
+                f'<div class="sc-card"><strong>Tracking starts today.</strong>'
+                f'<div class="sc-sub" style="margin-top:.5rem; line-height:1.6">'
+                "Every day's top 10 now gets logged. Check back in about 21 trading days "
+                "(roughly a month) to see how the first cohort actually did, graded against "
+                "the S&amp;P 500 — a pick that fell less than the market still counts as a "
+                "win, since that's the actual claim being made (relative outperformance, "
+                "not a guaranteed rise).</div></div>",
+                unsafe_allow_html=True)
+        elif not retro["graded"]:
+            days_left = retro["pending_trading_days"]
+            st.markdown(
+                f'<div class="sc-card"><strong>Coming soon — '
+                f'{days_left} trading day{"s" if days_left != 1 else ""} to go.</strong>'
+                f'<div class="sc-sub" style="margin-top:.5rem; line-height:1.6">'
+                f"{retro['n_logged_cohorts']} day(s) of picks logged so far, none old enough "
+                "yet to grade — each cohort needs a full 21 trading days before it's graded "
+                "against the S&amp;P 500 over that same window.</div></div>",
+                unsafe_allow_html=True)
+        else:
+            latest = retro["graded"][0]
+            n_graded_cohorts = len(retro["graded"])
+            cohort_count_note = (f" {n_graded_cohorts} cohorts graded so far."
+                                 if n_graded_cohorts > 1 else "")
+            st.markdown(
+                f'<p style="color:{ZINC["500"]}; font-size:.85rem; margin-bottom:.6rem;">'
+                f"Most recent graded cohort — picked {latest['pick_date']}, graded "
+                f"{latest['graded_date']} (21 trading days later) against the S&amp;P 500's "
+                f"{latest['benchmark_return']:+.1%} over the same window.{cohort_count_note}"
+                f'</p>', unsafe_allow_html=True)
+
+            retro_columns = st.columns(3)
+            retro_columns[0].markdown(
+                card("Beat the market", f"{latest['pct_beat_benchmark']:.0%}",
+                    "of that day's top 10, vs. S&amp;P 500", dark=True), unsafe_allow_html=True)
+            retro_columns[1].markdown(
+                card("Up in absolute terms", f"{latest['pct_up_absolute']:.0%}", ""),
+                unsafe_allow_html=True)
+            retro_columns[2].markdown(
+                card("Avg. pick return", f"{latest['avg_stock_return']:+.1%}",
+                    f"S&amp;P 500: {latest['benchmark_return']:+.1%}"),
+                unsafe_allow_html=True)
+
+            retro_rows = []
+            for pick in latest["picks"]:
+                relative = pick["stock_return"] - latest["benchmark_return"]
+                if pick["up_absolute"]:
+                    note = "Hit"
+                elif pick["beat_benchmark"]:
+                    note = "Down, but beat the market"
+                else:
+                    note = "Miss"
+                retro_rows.append({
+                    "Rank": pick["rank"], "Ticker": pick["ticker"],
+                    "Return": f"{pick['stock_return']:+.1%}",
+                    "vs. S&P 500": f"{relative:+.1%}",
+                    "Result": note,
+                })
+            st.dataframe(pd.DataFrame(retro_rows), use_container_width=True, hide_index=True)
+
+            if len(retro["graded"]) > 1:
+                with st.expander(f"See all {len(retro['graded'])} graded cohorts"):
+                    history_rows = pd.DataFrame([{
+                        "Picked": c["pick_date"], "Graded": c["graded_date"],
+                        "Beat market": f"{c['pct_beat_benchmark']:.0%}",
+                        "Up absolute": f"{c['pct_up_absolute']:.0%}",
+                        "Avg. return": f"{c['avg_stock_return']:+.1%}",
+                        "S&P 500": f"{c['benchmark_return']:+.1%}",
+                    } for c in retro["graded"]])
+                    st.dataframe(history_rows, use_container_width=True, hide_index=True)
+
+            if retro["pending_trading_days"] is not None:
+                days_left = retro["pending_trading_days"]
+                st.markdown(
+                    f'<p style="color:{ZINC["500"]}; font-size:.78rem; margin-top:.5rem;">'
+                    f"A more recent cohort is still counting down — "
+                    f"{days_left} trading day{'s' if days_left != 1 else ''} until it's old "
+                    "enough to grade.</p>", unsafe_allow_html=True)
 
         # ---------------- live news sentiment (annotation ONLY) -------------
         st.markdown('<div class="sc-label" style="margin-top:1.4rem">'

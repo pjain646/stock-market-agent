@@ -52,6 +52,10 @@ MORNING_BRIEF_PATH = PROJECT_ROOT / "candidates" / "morning_brief.json"
 # runs (each CI run is a fresh checkout with no local disk to persist to), so
 # it has to be committed like everything else in candidates/, not data_cache/.
 PRICE_CACHE_PATH = PROJECT_ROOT / "candidates" / "price_cache.parquet"
+# Same free ride, same reason: a persistent log of past top-10 picks, so
+# core/retrospective.py has something to grade once enough time has passed.
+# Unlike CANDIDATES_PATH (overwritten daily), this one only ever grows.
+PICKS_HISTORY_PATH = PROJECT_ROOT / "candidates" / "picks_history.csv"
 
 # The contract every proposed feature module must satisfy. This text is shown
 # to the researcher verbatim, and enforced when the module is loaded.
@@ -527,6 +531,12 @@ def rank_stock_candidates(panel: pd.DataFrame) -> None:
     print(f"\nTOP CANDIDATES (saved to {CANDIDATES_PATH.relative_to(PROJECT_ROOT)}):")
     print(ranked[["ticker", "date", "predicted_up_probability", "top_driver"]].head(10)
           .to_string(index=False))
+
+    # candidates.csv gets overwritten every day — this is the only place
+    # today's top 10 survives, so the dashboard can eventually grade them
+    # against what actually happened (core/retrospective.py).
+    candidates_module.log_picks_snapshot(ranked, PICKS_HISTORY_PATH)
+    print(f"logged today's top 10 to {PICKS_HISTORY_PATH.relative_to(PROJECT_ROOT)}")
 
 
 def generate_morning_brief(panel: pd.DataFrame) -> None:

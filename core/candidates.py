@@ -137,3 +137,37 @@ def save_candidates(candidates: pd.DataFrame, signals: list[dict], output_path: 
         "signals_used": [{"signal_name": s["signal_name"], "tested_score": s["tested_score"]} for s in signals],
         "n_candidates": len(candidates),
     }, indent=2))
+
+
+def log_picks_snapshot(candidates: pd.DataFrame, history_path: pathlib.Path,
+                       top_n: int = 10, date_column: str = "date") -> None:
+    """Append today's top-N picks to a persistent history log, so
+    `core.retrospective` has something to grade once enough time has
+    passed. `candidates.csv` itself gets overwritten every day (Phase D+'s
+    whole design is "today's live picks," not a history) — this is the
+    ONLY place that record survives.
+
+    Idempotent per date: re-running the pipeline the same day replaces
+    that date's rows instead of duplicating them, so a manual re-run or a
+    retry after a partial failure can't double-count a day.
+    """
+    if candidates.empty:
+        return
+    today_rows = candidates.sort_values("predicted_up_probability", ascending=False).head(top_n)
+    snapshot = pd.DataFrame({
+        "date": today_rows[date_column].astype(str).values,
+        "ticker": today_rows["ticker"].values,
+        "industry": today_rows["industry"].values,
+        "rank": range(1, len(today_rows) + 1),
+        "predicted_up_probability": today_rows["predicted_up_probability"].values,
+    })
+
+    history_path.parent.mkdir(parents=True, exist_ok=True)
+    if history_path.exists():
+        existing = pd.read_csv(history_path)
+        existing = existing[existing["date"] != snapshot["date"].iloc[0]]  # drop same-day re-run
+        combined = pd.concat([existing, snapshot], ignore_index=True)
+    else:
+        combined = snapshot
+    combined = combined.sort_values(["date", "rank"]).reset_index(drop=True)
+    combined.to_csv(history_path, index=False)
