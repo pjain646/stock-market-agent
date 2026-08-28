@@ -18,20 +18,33 @@ UNIVERSE = {
     "Financials": ["JPM", "BAC", "WFC", "C", "GS", "MS", "SCHW", "AXP",
                    "BLK", "SPGI", "ICE", "CME", "PNC", "USB", "TFC", "COF",
                    "MET", "PGR", "AIG", "TRV", "ALL", "MMC", "BK", "STT"],
+    # MU/AMAT/LRCX/KLAC added Aug 2026 to close a coverage gap flagged in
+    # review: the universe had mega-cap tech + logic/analog chips (NVDA,
+    # AMD, AVGO, QCOM, TXN, INTC) but no memory or semi-equipment names.
     "Technology": ["AAPL", "MSFT", "NVDA", "GOOGL", "AMZN", "META", "AVGO", "CRM",
                    "ORCL", "ADBE", "CSCO", "INTC", "IBM", "TXN", "QCOM", "INTU",
-                   "AMD", "NOW", "ADP", "ACN"],
+                   "AMD", "NOW", "ADP", "ACN", "MU", "AMAT", "LRCX", "KLAC"],
+    # ISRG (Intuitive Surgical, surgical robotics) added alongside the other
+    # medtech names below, not to Technology/Industrials — GICS classifies
+    # it as Health Care Equipment, matching SYK/BSX/MDT already here.
     "Pharma":     ["JNJ", "PFE", "MRK", "ABBV", "LLY", "BMY", "AMGN", "GILD",
                    "UNH", "CVS", "ABT", "TMO", "DHR", "MDT", "CI", "ELV",
-                   "HUM", "ZTS", "SYK", "BSX"],
+                   "HUM", "ZTS", "SYK", "BSX", "ISRG"],
     "Energy": ["XOM", "CVX", "COP", "SLB", "EOG", "PSX", "MPC", "OXY",
                "WMB", "KMI", "VLO", "HES", "BKR", "HAL", "DVN"],
+    # TSLA added here, not Technology — GICS classifies it as Automobile
+    # Manufacturers (Consumer Discretionary) alongside GM/F, despite the
+    # market often talking about it as a tech name. Per-industry modeling
+    # (evaluator.py) depends on sector assignment being economically
+    # accurate, not colloquial.
     "ConsumerDiscretionary": ["HD", "MCD", "NKE", "SBUX", "LOW", "TJX", "BKNG", "CMG",
-                              "ORLY", "MAR", "GM", "F", "YUM", "ROST", "AZO"],
+                              "ORLY", "MAR", "GM", "F", "YUM", "ROST", "AZO", "TSLA"],
     "ConsumerStaples": ["PG", "KO", "PEP", "WMT", "COST", "PM", "MO", "MDLZ",
                         "CL", "KMB", "GIS", "STZ", "SYY", "KR", "HSY"],
+    # ROK (Rockwell Automation, industrial/factory robotics) added here —
+    # GICS Electrical Equipment, matching ETN/EMR already in this sector.
     "Industrials": ["HON", "UNP", "UPS", "CAT", "RTX", "BA", "LMT", "DE",
-                    "GE", "MMM", "NOC", "GD", "FDX", "EMR", "ETN"],
+                    "GE", "MMM", "NOC", "GD", "FDX", "EMR", "ETN", "ROK"],
     "Utilities": ["NEE", "DUK", "SO", "D", "AEP", "EXC", "SRE", "XEL",
                   "ED", "PEG", "WEC", "ES", "AWK", "DTE", "PPL"],
     "CommunicationServices": ["T", "VZ", "CMCSA", "DIS", "NFLX", "TMUS", "CHTR", "EA",
