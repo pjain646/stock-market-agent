@@ -377,14 +377,31 @@ def compute_monetary_metric(oos_csv_path: str) -> dict:
 def load_monetary_summary(tested_experiments: pd.DataFrame) -> pd.DataFrame:
     """One row per tested signal with its external ($) metric, for the
     Signals tab. Skips signals with no saved out-of-sample rows or too
-    little validation data for two non-overlapping periods."""
+    little validation data for two non-overlapping periods.
+
+    Reads the metric from `metrics.monetary` (saved once, at test time, in
+    research_pipeline.py::evaluate_proposal) rather than recomputing it from
+    oos_rows.csv on every load — that CSV is gitignored as a local artifact,
+    so relying on it at read-time meant this went silently blank ("—") for
+    any signal whose CSV wasn't sitting on THIS machine (e.g. after a fresh
+    checkout, or in the deployed dashboard). Experiments tested before this
+    fix have no `monetary` key yet; for those only, fall back to the old
+    CSV-based computation so historical rows aren't blanked out.
+    """
     rows = []
     for record in tested_experiments.itertuples():
-        oos_csv_path = getattr(record, "oos_csv_path", None)
-        if not oos_csv_path or pd.isna(oos_csv_path):
-            continue
-        result = compute_monetary_metric(oos_csv_path)
-        if "error" in result:
+        result = None
+        try:
+            saved_metrics = json.loads(record.metrics) if record.metrics else {}
+        except (TypeError, ValueError):
+            saved_metrics = {}
+        if "monetary" in saved_metrics:
+            result = saved_metrics["monetary"]
+        else:
+            oos_csv_path = getattr(record, "oos_csv_path", None)
+            if oos_csv_path and not pd.isna(oos_csv_path):
+                result = compute_monetary_metric(oos_csv_path)
+        if not result or "error" in result:
             continue
         rows.append({
             "iteration": record.iteration,

@@ -36,6 +36,7 @@ from core.orchestration import UsageLimitError  # noqa: E402
 from core.labeling import add_forward_direction_label  # noqa: E402
 from core.splits import assign_time_split  # noqa: E402
 from core.evaluator import compare_models, per_industry_eval, walk_forward_eval  # noqa: E402
+from core.monetary_metric import top5_vs_universe  # noqa: E402
 from core.timing import timed  # noqa: E402
 from core.untrusted_exec import secrets_hidden  # noqa: E402
 
@@ -446,6 +447,16 @@ def evaluate_proposal(panel: pd.DataFrame, feature_code_path: pathlib.Path,
         panel_with_feature, list(new_feature_columns),
         half_life_days=config.RECENCY_HALFLIFE_DAYS, label_horizon_days=config.LABEL_HORIZON,
     )
+    # Computed here, once, from `scored_rows` while it's still in memory — and
+    # saved into the journal, not just to oos_rows.csv. The dashboard's "Signal
+    # $ edge" used to recompute this from oos_rows.csv on every page load, which
+    # broke silently for every signal whose CSV wasn't present (that file is
+    # gitignored as a local artifact and doesn't survive a fresh checkout or a
+    # deploy). Saving the finished number here means the dashboard never needs
+    # that file again.
+    monetary = top5_vs_universe(scored_rows)
+    if "error" not in monetary:
+        metrics["monetary"] = monetary
     journal.record_verdict(experiment_id, metrics)
     journal.record_session_artifacts(
         experiment_id, oos_csv_path=str(oos_csv_path.relative_to(PROJECT_ROOT))
