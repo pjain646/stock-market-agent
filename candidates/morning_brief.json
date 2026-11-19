@@ -1,495 +1,494 @@
 {
-  "as_of": "2026-11-18",
+  "as_of": "2026-11-19",
   "macro_bullets": [
-    "Nvidia's post-earnings results and $130B forecast lifted AI chip names even as interim CEO Kress addresses the fallout from Jensen Huang's exit.",
-    "Fed minutes showed officials expecting more rate hikes and worried about AI's inflation impact, with another December hike widely expected.",
-    "A sharp software-sector selloff hit as AI agents raise disruption fears, dragging Salesforce, ServiceNow and Intuit sharply lower.",
-    "UnitedHealth and other insurers tumbled on a proposed CMS anti-fraud rule and Warren's push to break up healthcare conglomerates.",
-    "Anthropic's hot IPO looms with rare-earth and metals names sliding amid lingering Iran/Hormuz oil-supply risk."
+    "The S&P 500 is heading for a 6th straight decline, tipping the market into oversold territory.",
+    "Anthropic's record $107B IPO debut (+16%) paradoxically sparked selling across AI and chip names.",
+    "A Trump-Xi-Putin summit produced an unprecedented 'peace declaration,' with Ukraine the main topic.",
+    "Gold sits near a 14-month low as a tighter Fed outlook and rate-hike chatter weigh on sentiment.",
+    "A Houthi strike hit Riyadh's tallest skyscraper and the Saudi wealth fund HQ as oil ticks up on tanker disruptions."
   ],
-  "internals_narrative": "Semiconductors (+0.4%) led while defense and medical-device names like AVGO (+2.5%), MRVL (+2.3%) and SYK (+2.2%) topped gainers, but broad Technology (-2.5%) and Robotics & Hardware (-4.2%) lagged as software stocks CRM (-9.5%), INTU (-7.2%) and NOW (-6.5%) cratered. Financials (-1.8%) and Pharma (-1.5%) also fell, with UNH (-5.4%) weighing on healthcare.",
+  "internals_narrative": "Consumer Discretionary (+1.0%) and Communication Services (+0.9%) led while Energy (-3.1%), Robotics & Hardware (-3.0%) and Pharma (-2.6%) lagged, with managed-care names collapsing (HUM -13.0%, UNH -10.2%, ELV -7.6%). Retailers topped gainers on earnings (TJX +8.0%, ROST +3.3%) alongside TTWO +6.2% and AMD +5.3%.",
   "gainers": [
     {
-      "ticker": "AVGO",
-      "industry": "Semiconductors",
-      "pct_change": 0.02459511804783432,
-      "as_of": "2026-11-17"
-    },
-    {
-      "ticker": "MRVL",
-      "industry": "Semiconductors",
-      "pct_change": 0.02325264769276414,
-      "as_of": "2026-11-17"
-    },
-    {
-      "ticker": "SYK",
-      "industry": "Pharma",
-      "pct_change": 0.021949045112723553,
-      "as_of": "2026-11-17"
-    },
-    {
-      "ticker": "AVB",
-      "industry": "RealEstate",
-      "pct_change": 0.02021258355466271,
-      "as_of": "2026-08-24"
-    },
-    {
-      "ticker": "ROK",
-      "industry": "Industrials",
-      "pct_change": 0.01652381389969859,
-      "as_of": "2026-11-17"
-    },
-    {
-      "ticker": "GILD",
-      "industry": "Pharma",
-      "pct_change": 0.015992317976479598,
-      "as_of": "2026-11-17"
-    },
-    {
-      "ticker": "RTX",
-      "industry": "Industrials",
-      "pct_change": 0.015957722921090767,
-      "as_of": "2026-11-17"
-    },
-    {
-      "ticker": "NOC",
-      "industry": "Industrials",
-      "pct_change": 0.01394664164037085,
-      "as_of": "2026-11-17"
-    },
-    {
-      "ticker": "KMI",
-      "industry": "Energy",
-      "pct_change": 0.008911543156130186,
-      "as_of": "2026-11-17"
-    },
-    {
-      "ticker": "LMT",
-      "industry": "Industrials",
-      "pct_change": 0.008766091984412805,
-      "as_of": "2026-11-17"
-    }
-  ],
-  "losers": [
-    {
-      "ticker": "CRM",
-      "industry": "Technology",
-      "pct_change": -0.09453985656326447,
-      "as_of": "2026-11-17"
-    },
-    {
-      "ticker": "INTU",
-      "industry": "Technology",
-      "pct_change": -0.07168071880042148,
-      "as_of": "2026-11-17"
-    },
-    {
-      "ticker": "USAR",
-      "industry": "Robotics & Hardware",
-      "pct_change": -0.0694249477719533,
-      "as_of": "2026-11-17"
-    },
-    {
-      "ticker": "NOW",
-      "industry": "Technology",
-      "pct_change": -0.06511020470838891,
-      "as_of": "2026-11-17"
-    },
-    {
-      "ticker": "NKE",
+      "ticker": "TJX",
       "industry": "ConsumerDiscretionary",
-      "pct_change": -0.06299006673128194,
-      "as_of": "2026-11-17"
-    },
-    {
-      "ticker": "UNH",
-      "industry": "Pharma",
-      "pct_change": -0.054220661457153985,
-      "as_of": "2026-11-17"
-    },
-    {
-      "ticker": "IBM",
-      "industry": "Technology",
-      "pct_change": -0.047090835131017306,
-      "as_of": "2026-11-17"
+      "pct_change": 0.08047744672350277,
+      "as_of": "2026-11-18"
     },
     {
       "ticker": "TTWO",
       "industry": "CommunicationServices",
-      "pct_change": -0.044690160164746584,
-      "as_of": "2026-11-17"
+      "pct_change": 0.062178239542869385,
+      "as_of": "2026-11-18"
     },
     {
-      "ticker": "ADBE",
+      "ticker": "AMD",
+      "industry": "Semiconductors",
+      "pct_change": 0.05309789394703679,
+      "as_of": "2026-11-18"
+    },
+    {
+      "ticker": "DIS",
+      "industry": "CommunicationServices",
+      "pct_change": 0.04634853818872675,
+      "as_of": "2026-11-18"
+    },
+    {
+      "ticker": "AMZN",
       "industry": "Technology",
-      "pct_change": -0.04247966239122836,
-      "as_of": "2026-11-17"
+      "pct_change": 0.03819448224610489,
+      "as_of": "2026-11-18"
     },
     {
-      "ticker": "SPGI",
-      "industry": "Financials",
-      "pct_change": -0.040798130545139255,
-      "as_of": "2026-11-17"
+      "ticker": "AVGO",
+      "industry": "Semiconductors",
+      "pct_change": 0.03644608157788021,
+      "as_of": "2026-11-18"
+    },
+    {
+      "ticker": "ROST",
+      "industry": "ConsumerDiscretionary",
+      "pct_change": 0.03261511699224173,
+      "as_of": "2026-11-18"
+    },
+    {
+      "ticker": "CMG",
+      "industry": "ConsumerDiscretionary",
+      "pct_change": 0.031258690333474615,
+      "as_of": "2026-11-18"
+    },
+    {
+      "ticker": "ZTS",
+      "industry": "Pharma",
+      "pct_change": 0.02503589187645905,
+      "as_of": "2026-11-18"
+    },
+    {
+      "ticker": "CSCO",
+      "industry": "Technology",
+      "pct_change": 0.02176426959878408,
+      "as_of": "2026-11-18"
+    }
+  ],
+  "losers": [
+    {
+      "ticker": "HUM",
+      "industry": "Pharma",
+      "pct_change": -0.12983262966133224,
+      "as_of": "2026-11-18"
+    },
+    {
+      "ticker": "UNH",
+      "industry": "Pharma",
+      "pct_change": -0.10205807267801148,
+      "as_of": "2026-11-18"
+    },
+    {
+      "ticker": "ELV",
+      "industry": "Pharma",
+      "pct_change": -0.07625653192084014,
+      "as_of": "2026-11-18"
+    },
+    {
+      "ticker": "FCX",
+      "industry": "Materials",
+      "pct_change": -0.0696202265323167,
+      "as_of": "2026-11-18"
+    },
+    {
+      "ticker": "NEM",
+      "industry": "Materials",
+      "pct_change": -0.060488973824512016,
+      "as_of": "2026-11-18"
+    },
+    {
+      "ticker": "VLO",
+      "industry": "Energy",
+      "pct_change": -0.05517216211556786,
+      "as_of": "2026-11-18"
+    },
+    {
+      "ticker": "MPC",
+      "industry": "Energy",
+      "pct_change": -0.05234340063043308,
+      "as_of": "2026-11-18"
+    },
+    {
+      "ticker": "CVS",
+      "industry": "Pharma",
+      "pct_change": -0.05197528506427507,
+      "as_of": "2026-11-18"
+    },
+    {
+      "ticker": "ACN",
+      "industry": "Technology",
+      "pct_change": -0.049272790648112075,
+      "as_of": "2026-11-18"
+    },
+    {
+      "ticker": "OXY",
+      "industry": "Energy",
+      "pct_change": -0.04883230916271786,
+      "as_of": "2026-11-18"
     }
   ],
   "industry_moves": [
     {
-      "industry": "Semiconductors",
-      "pct_change": 0.004427056803943777
-    },
-    {
-      "industry": "Industrials",
-      "pct_change": -0.0021547531596970357
-    },
-    {
-      "industry": "RealEstate",
-      "pct_change": -0.008149348077768025
-    },
-    {
-      "industry": "Materials",
-      "pct_change": -0.009390685023074653
-    },
-    {
-      "industry": "Energy",
-      "pct_change": -0.009670589532493865
-    },
-    {
       "industry": "ConsumerDiscretionary",
-      "pct_change": -0.011361155351142994
-    },
-    {
-      "industry": "Memory",
-      "pct_change": -0.01166422351694707
-    },
-    {
-      "industry": "ConsumerStaples",
-      "pct_change": -0.011692057233081095
+      "pct_change": 0.010399344334425478
     },
     {
       "industry": "CommunicationServices",
-      "pct_change": -0.01206320190274095
+      "pct_change": 0.008558778517657661
+    },
+    {
+      "industry": "RealEstate",
+      "pct_change": 0.0060776744095254465
     },
     {
       "industry": "Utilities",
-      "pct_change": -0.014931398337875807
+      "pct_change": 0.0035196092526547464
     },
     {
-      "industry": "Pharma",
-      "pct_change": -0.015181241112318297
+      "industry": "Industrials",
+      "pct_change": -0.0014693007690591356
     },
     {
-      "industry": "Financials",
-      "pct_change": -0.017939366237432978
+      "industry": "Semiconductors",
+      "pct_change": -0.0032474119058984374
     },
     {
       "industry": "Technology",
-      "pct_change": -0.02531115026251046
+      "pct_change": -0.0059087355024352965
+    },
+    {
+      "industry": "ConsumerStaples",
+      "pct_change": -0.0062828996194499815
+    },
+    {
+      "industry": "Memory",
+      "pct_change": -0.010357393657953684
+    },
+    {
+      "industry": "Financials",
+      "pct_change": -0.011944384376404988
+    },
+    {
+      "industry": "Materials",
+      "pct_change": -0.015279310188556671
+    },
+    {
+      "industry": "Pharma",
+      "pct_change": -0.026486603117802314
     },
     {
       "industry": "Robotics & Hardware",
-      "pct_change": -0.042393002063479235
+      "pct_change": -0.03043329132890818
+    },
+    {
+      "industry": "Energy",
+      "pct_change": -0.030882594378298926
     }
   ],
   "ticker_notes": {
-    "AVGO": "Broadcom's cash position is highlighted as holding up better than Nvidia's.",
-    "MRVL": "Credo stock rose after settling its AEC patent fight with Marvell.",
-    "ROK": "Rockwell Automation signed a definitive agreement to acquire AGILOX.",
-    "GILD": "Gilead mapped growth beyond BIKTARVY across HIV, cancer and inflammation drugs.",
-    "RTX": "RTX notched a third successful rocket test, drawing investor attention.",
-    "CRM": "Salesforce fell 9.5% in its worst day since 2024 as AI agents rattle software.",
-    "INTU": "Intuit dropped 7.2% two days before earnings amid AI finance-tool fears.",
-    "USAR": "USA Rare Earth slid as a rare-earth selloff extended ahead of the Trump-Xi meeting, with dilution concerns flagged.",
-    "NOW": "ServiceNow fell 6.5% despite 21% subscription growth as the software selloff deepened.",
-    "NKE": "Nike set a date on its comeback and laid out a $3.50 EPS path at its investor day.",
-    "UNH": "UnitedHealth sank 12% on a proposed CMS fraud rule as Warren targeted healthcare giants.",
-    "IBM": "IBM was flagged as a top IT services stock even as shares fell.",
-    "CHTR": "Charter announced expiration and results of tender offers for eight series of notes.",
-    "BKR": "Baker Hughes agreed to sell its LNG process technologies unit to Nextchem for $220M.",
-    "AIG": "Morgan Stanley maintained Equal-Weight on AIG and raised its price target to $85."
+    "TJX": "TJX raised its sales view on Q3 earnings even as fuel costs weighed on the quarter.",
+    "TTWO": "Take-Two rallied amid renewed GTA VI fervor gripping the market.",
+    "AMD": "AMD, still up 125% this year, drew debate over whether the stock has topped.",
+    "DIS": "Disney looks fully priced after a Q4 earnings beat.",
+    "AMZN": "Amazon is cited as a way to get immediate exposure to the Anthropic IPO.",
+    "ROST": "Ross Stores warned on Q3 EPS and holiday inventory.",
+    "HUM": "Humana fell as roughly 3 million seniors were dropped from Medicare Advantage.",
+    "UNH": "UnitedHealth slid amid a broad health-insurer selloff.",
+    "ELV": "Elevance Health dropped alongside peers in the managed-care rout.",
+    "FCX": "Freeport-McMoRan tumbled as copper crashed 5% after Druckenmiller disclosed a short.",
+    "NEM": "Newmont fell despite Druckenmiller's pivot into gold miners.",
+    "VLO": "Valero dropped as crude gave back ground on building inventories.",
+    "MPC": "Marathon Petroleum fell with refiners on surplus-supply concerns.",
+    "BA": "Boeing, down 25% this year, saw a director buy in."
   },
   "articles": [
     {
       "ticker": null,
-      "headline": "Fed officials expect more rate hikes, worry about AI impact on inflation, minutes show",
+      "headline": "S&P 500 heads for 6th straight decline. Plus, J&J advances two key products",
       "source": "CNBC",
-      "url": "https://www.cnbc.com/2026/11/18/fed-minutes-october-2026.html",
-      "datetime": "2026-11-18T19:08:44"
+      "url": "https://www.cnbc.com/investingclub/2026/11/19/sp-500-heads-for-6th-straight-decline-plus-jj-advances-two-key-products.html",
+      "datetime": "2026-11-19T19:52:06"
     },
     {
-      "ticker": "CRM",
-      "headline": "Salesforce Stocks Fall 9.45% in Worst Day Since 2024 as AI Agents Rattle Software",
-      "source": "Yahoo",
-      "url": "https://finnhub.io/api/news?id=6539dc90fda10854e108aefd887d610844f673e76bdc3b986c3cd69c5a9b79c6",
-      "datetime": "2026-11-18T19:40:46"
+      "ticker": "ROST",
+      "headline": "Dow Tumbles Over 500 Points as Nvidia Falls After Earnings: Investor Sentiment Weakens Further, Greed Index in \u2018Extreme Fear\u2019 Zone",
+      "source": "Benzinga",
+      "url": "https://finnhub.io/api/news?id=84457cfabde93bd001d8a0ab16ec9d4bd1bafe8d2cb3cf7d1eb5289d3411a259",
+      "datetime": "2026-11-19T05:49:52"
     },
     {
-      "ticker": "UNH",
-      "headline": "UnitedHealth Sinks 12% on CMS Fraud Rule as Warren Says Giants \u201cTake a Cut at Every Step\u201d",
+      "ticker": "FCX",
+      "headline": "Copper Just Crashed 5% a Day After Druckenmiller Said He\u2019s Short",
       "source": "Yahoo",
-      "url": "https://finnhub.io/api/news?id=5997a383a291939570dec7b6ff85907073692449e26a8f07b61b8475322cdadd",
-      "datetime": "2026-11-18T19:41:16"
+      "url": "https://finnhub.io/api/news?id=b2348dcc792fb8f05ac99d67920d9f24073ff6cf013863cd3a351342f8b96fe8",
+      "datetime": "2026-11-19T15:48:00"
+    },
+    {
+      "ticker": "HUM",
+      "headline": "Clark Howard Says 3 Million Seniors Just Got Dumped by Medicare Advantage and Have Two Months to Act",
+      "source": "Yahoo",
+      "url": "https://finnhub.io/api/news?id=01076089fb29ccace3d4752a81f918cc6b6742f0cff09b1c913e9485b74a421e",
+      "datetime": "2026-11-19T17:40:12"
+    },
+    {
+      "ticker": "DIS",
+      "headline": "Disney (DIS) Stock Looks Fully Priced Following Q4 Earnings Beat",
+      "source": "Yahoo",
+      "url": "https://finnhub.io/api/news?id=b14b85f7acceb36a882a0c593eb60bb72891ff40f6ae0db989937ece7db5611f",
+      "datetime": "2026-11-19T16:15:02"
+    },
+    {
+      "ticker": "TJX",
+      "headline": "TJX Q3 Earnings Call Highlights Raised Sales View as Fuel Costs Weigh",
+      "source": "Yahoo",
+      "url": "https://finnhub.io/api/news?id=e6acb8a1adfa9e13108f29d9546cf961fcf054011db33415c82c1ddaea0c45ed",
+      "datetime": "2026-11-19T17:14:00"
+    },
+    {
+      "ticker": "ROST",
+      "headline": "Why Is Ross Stores (ROST) Warning On Q3 EPS And Holiday Inventory?",
+      "source": "Yahoo",
+      "url": "https://finnhub.io/api/news?id=a2da86ff10ce0657a8cb6409459ed6faa3d6234ef258bd8de58fa12227fc4667",
+      "datetime": "2026-11-19T08:12:59"
+    },
+    {
+      "ticker": "NEM",
+      "headline": "Druckenmiller Retreats From Chip Stocks in Pivot to Gold Miners and SpaceX",
+      "source": "Yahoo",
+      "url": "https://finnhub.io/api/news?id=cce2a9ccc2224c1222048c71006e316356ea5b53ba11c1a11e9150a1f5b55da3",
+      "datetime": "2026-11-19T16:01:00"
     },
     {
       "ticker": null,
-      "headline": "Nvidia interim CEO Kress tells employees \u2018let\u2019s move forward\u2019 at first all-hands meeting since Jensen Huang exit",
+      "headline": "Gold's bad year is getting worse. Why its price keeps falling",
       "source": "CNBC",
-      "url": "https://www.cnbc.com/2026/11/18/nvidia-interim-ceo-kress-addresses-staff-after-jensen-huang-exit-.html",
-      "datetime": "2026-11-18T19:09:48"
+      "url": "https://www.cnbc.com/2026/11/19/gold-prices-fall-fed-rates-dollar.html",
+      "datetime": "2026-11-19T13:37:52"
+    },
+    {
+      "ticker": "BA",
+      "headline": "Boeing Is Down 25% This Year, and a Director Just Bought In",
+      "source": "Yahoo",
+      "url": "https://finnhub.io/api/news?id=cd09c5b52e2552a6d4f7892b95f4a0fafc6db88c26686788e5776a43690d5ede",
+      "datetime": "2026-11-19T17:42:37"
     },
     {
       "ticker": null,
-      "headline": "Nvidia's earnings report had something for the bulls, bears and everyone in between",
+      "headline": "Data center electricity use could double by 2030, IEA says",
       "source": "CNBC",
-      "url": "https://www.cnbc.com/investingclub/2026/11/18/nvidias-earnings-report-had-something-for-the-bulls-bears-and-everyone-in-between.html",
-      "datetime": "2026-11-18T19:07:39"
+      "url": "https://www.cnbc.com/2026/11/19/data-center-electricity-demand-iea.html",
+      "datetime": "2026-11-19T10:14:03"
+    },
+    {
+      "ticker": "TTWO",
+      "headline": "Anthropic, AMD, Alphabet, Palo Alto, Take-Two, Walmart, and More Stocks That Explain Today\u2019s Market",
+      "source": "Yahoo",
+      "url": "https://finnhub.io/api/news?id=95b7d457c2f06088bbba42d7f818bf650bbf4afb8c98db8ab1e3103814fb6d5e",
+      "datetime": "2026-11-19T17:30:00"
     },
     {
       "ticker": "AVGO",
-      "headline": "Nvidia's $130 Billion Forecast Sparks Fresh AI Stock Rally",
+      "headline": "What Does A Fed Hike Mean For AI Stocks?",
       "source": "Yahoo",
-      "url": "https://finnhub.io/api/news?id=1abda7e4401330af500407811fd6f5bb6457dbc5181e4b90eb019c50ff73693e",
-      "datetime": "2026-11-18T19:05:35"
-    },
-    {
-      "ticker": "NOW",
-      "headline": "ServiceNow Stocks Fall 6.51% Despite 21% Subscription Growth as Software Selloff Deepens",
-      "source": "Yahoo",
-      "url": "https://finnhub.io/api/news?id=73df2b1673aa310974261630c18314f4a53e6678710fc79dec35c605e2609436",
-      "datetime": "2026-11-18T17:20:29"
-    },
-    {
-      "ticker": "INTU",
-      "headline": "Intuit Stocks Fall 7.17% Two Days Before Earnings as AI Finance Tools Loom",
-      "source": "Yahoo",
-      "url": "https://finnhub.io/api/news?id=e5be91fba4a582b0f7ff4282864dd95d8ea211861fc501d4126b12ec21f6ab0a",
-      "datetime": "2026-11-18T17:55:22"
-    },
-    {
-      "ticker": null,
-      "headline": "Fed officials set to raise rates again in December, but the future still looks murky",
-      "source": "CNBC",
-      "url": "https://www.cnbc.com/2026/11/18/federal-reserve-governor-christopher-waller.html",
-      "datetime": "2026-11-18T12:37:32"
-    },
-    {
-      "ticker": "NKE",
-      "headline": "Nike just put a date on its comeback after a 13-year stock low",
-      "source": "Yahoo",
-      "url": "https://finnhub.io/api/news?id=715ea77dabed338f860b9ae21a027f346cf26367ef78622098472f5ae1eb1eef",
-      "datetime": "2026-11-18T19:03:00"
-    },
-    {
-      "ticker": null,
-      "headline": "China\u2019s military seeks Nvidia\u2019s advanced chips for AI capabilities, commission says",
-      "source": "CNBC",
-      "url": "https://www.cnbc.com/2026/11/18/nvidia-chips-china-military-ai.html",
-      "datetime": "2026-11-18T10:45:01"
-    },
-    {
-      "ticker": "ROK",
-      "headline": "Rockwell Automation Signs Definitive Agreement to Acquire AGILOX",
-      "source": "Yahoo",
-      "url": "https://finnhub.io/api/news?id=d701430c45707f91b29294a82a5d133d6460f2eefbd397c92bdf744050919c39",
-      "datetime": "2026-11-18T12:00:00"
-    },
-    {
-      "ticker": "RTX",
-      "headline": "How Investors Are Reacting To RTX (RTX) Third Rocket Test Success",
-      "source": "Yahoo",
-      "url": "https://finnhub.io/api/news?id=c38e718480a7b5bb97884193a36da96b5521b6027de7a8b9d76ba56c1c57e3f7",
-      "datetime": "2026-11-18T00:23:10"
+      "url": "https://finnhub.io/api/news?id=af484df95e7eb86be66e775760409a881d22c7e25e7a8f2c02404afec7b70b9f",
+      "datetime": "2026-11-19T18:23:20"
     },
     {
       "ticker": "UNH",
-      "headline": "Elizabeth Warren Targets CVS, UnitedHealth and Cigna, Says Healthcare Giants \u2018Take a Cut at Every Step\u2019 as She Calls for Breaking Up Conglomerates",
+      "headline": "Before the Bell: Rate-Hike Signals, Health Insurer Losses and Cyber Gains",
       "source": "Yahoo",
-      "url": "https://finnhub.io/api/news?id=3dc422acba4ca2d73442b267d98593056d03a911a2ba436c73b07a5f83a019e1",
-      "datetime": "2026-11-18T17:30:05"
+      "url": "https://finnhub.io/api/news?id=4203198d812eaea050e1ec0c11c9f29b45782e5643ed928a11ea1ed474072797",
+      "datetime": "2026-11-19T14:15:00"
     },
     {
-      "ticker": null,
-      "headline": "Small investor enthusiasm for Anthropic IPO to rival SpaceX debut",
-      "source": "CNBC",
-      "url": "https://www.cnbc.com/2026/11/18/anthropic-ipo-retail-investors.html",
-      "datetime": "2026-11-18T14:09:17"
+      "ticker": "TTWO",
+      "headline": "The cat came back: Roaring Kitty tweet sends GameStop stock higher amid GTA VI fervor",
+      "source": "Yahoo",
+      "url": "https://finnhub.io/api/news?id=9cfbe20c3105f8672c7e567d8eb384372396f2466806d43442f0a4383ed45c5b",
+      "datetime": "2026-11-19T18:42:20"
     }
   ],
   "watchlist_articles": {
-    "SPY": [
+    "SPY": [],
+    "VGT": [
       {
-        "ticker": "SPY",
-        "headline": "Cathie Wood Was Right About These 5 Stocks",
+        "ticker": "VGT",
+        "headline": "Which Funds With Semiconductor Exposure Best Capture The China AI Chip Curbs?",
         "source": "Yahoo",
-        "url": "https://finnhub.io/api/news?id=86369434f5f8cfec98ce45e8d8bea9c06765b6a5412240b4278c7aaa44cbda30",
-        "datetime": "2026-11-18T17:16:22"
-      },
-      {
-        "ticker": "SPY",
-        "headline": "Buying SPY At The 2007 Top Still Paid Off",
-        "source": "Yahoo",
-        "url": "https://finnhub.io/api/news?id=b789664d139fe6692de14b671e44f32be51680ac3afde4f9e940d4803e3e86e3",
-        "datetime": "2026-11-18T15:21:08"
+        "url": "https://finnhub.io/api/news?id=cc4d39685a65f5892b47f21f6ea7be3f14288ce0f837a24f692427c513367abe",
+        "datetime": "2026-11-18T20:09:31"
       }
     ],
-    "VGT": [],
     "QQQ": [
       {
         "ticker": "QQQ",
-        "headline": "Stock Market Today: Dow Jones, S&P 500, Nasdaq 100 Futures Trade Mixed Ahead of FOMC Minutes\u2014 NVDA, AAOI, PANW in Focus (UPDATED)",
-        "source": "Benzinga",
-        "url": "https://finnhub.io/api/news?id=ac7f7a50887572e876b80261e0f880a11e093f75e77aa082a4e0e6f938897cb9",
-        "datetime": "2026-11-18T09:41:07"
+        "headline": "Amazon Beat QQQ, But The Ride Was Much Harder",
+        "source": "Yahoo",
+        "url": "https://finnhub.io/api/news?id=a69dfd784d09785bf2dcd1c36b935e29cd796fa639e347b804e976edf6fe8d39",
+        "datetime": "2026-11-19T18:23:21"
+      },
+      {
+        "ticker": "QQQ",
+        "headline": "SpaceX Offers a Clue to What Anthropic\u2019s IPO Could Mean for QQQ Holders",
+        "source": "Yahoo",
+        "url": "https://finnhub.io/api/news?id=550e044a7f15117fec1073b806c6590120c531fa22386f5b811aa19c023f65a3",
+        "datetime": "2026-11-19T17:27:07"
       }
     ],
     "AAPL": [
       {
         "ticker": "AAPL",
-        "headline": "MP to Become Major Domestic Permanent Magnet Supplier Over Next 3 Years, Says Needham",
+        "headline": "Walmart, Costco see some panic-buying after tech outages",
         "source": "Yahoo",
-        "url": "https://finnhub.io/api/news?id=d881f9bf5e76d7c139983be04b6fa11a3409638a59eeefd5f0f159892d1d860f",
-        "datetime": "2026-11-18T17:37:29"
+        "url": "https://finnhub.io/api/news?id=e237600627b6584dd9e34aaa635702babbe79789e726e095ad288897532aa557",
+        "datetime": "2026-11-19T19:19:22"
       },
       {
         "ticker": "AAPL",
-        "headline": "Apple Stock Polishes Breakout As Nvidia-Led AI Boom Gets Wake-Up Call",
+        "headline": "Apple (AAPL) Faces UK Backdoor Admission And French Obsolescence Trial",
         "source": "Yahoo",
-        "url": "https://finnhub.io/api/news?id=c1a20d918e4453178bef2507c23423d34138001e9351715feb190d787b659d84",
-        "datetime": "2026-11-18T16:07:13"
+        "url": "https://finnhub.io/api/news?id=d1b374a01a979a32f88833503bbe3e671d4c6b3fdb4ebf2e8546bbf8d6871b60",
+        "datetime": "2026-11-19T19:15:55"
+      },
+      {
+        "ticker": "AAPL",
+        "headline": "Roundtable 100 analysts lift Apple on record R&D spend",
+        "source": "Yahoo",
+        "url": "https://finnhub.io/api/news?id=93699b6ab030f02bbd9ff1a2927aeb58e095d85c21936dc7854c66457f957f0f",
+        "datetime": "2026-11-19T18:57:34"
       }
     ],
     "MSFT": [
       {
         "ticker": "MSFT",
-        "headline": "Elastic Makes High-Accuracy, Cost-Efficient Jina AI Models Available on Microsoft Foundry",
+        "headline": "Walmart, Costco see some panic-buying after tech outages",
         "source": "Yahoo",
-        "url": "https://finnhub.io/api/news?id=0201597eb9ee027578f0e2d68f187e08a2d2517ee75fde4eaf0b1fca0a47e21e",
-        "datetime": "2026-11-18T19:31:00"
+        "url": "https://finnhub.io/api/news?id=e237600627b6584dd9e34aaa635702babbe79789e726e095ad288897532aa557",
+        "datetime": "2026-11-19T19:19:22"
       }
     ],
     "NVDA": [
       {
         "ticker": "NVDA",
-        "headline": "Nvidia Revamps Its Growth Forecast as the CEO Search Goes On",
+        "headline": "Short Seller Raises Questions About Nvidia's Former Top Sales Executive. $2.5 Billion China Chip Case In Focus.",
         "source": "Yahoo",
-        "url": "https://finnhub.io/api/news?id=8d14677e8f5e0393b5903a6d3f7b9290761e0e38e00223487bdc7792e2d69c01",
-        "datetime": "2026-11-18T19:52:03"
+        "url": "https://finnhub.io/api/news?id=6de128a88288cc80aae5ace163107c28abb3b7895f2a6c85127eb973735ee74b",
+        "datetime": "2026-11-19T19:49:17"
       },
       {
         "ticker": "NVDA",
-        "headline": "What's Going On With Nvidia Stock Wednesday",
+        "headline": "\u2018SpaceX Has Gone All In With Nvidia\u2019: Nvidia\u2019s Biggest Customer Is Also Its Biggest Stock Holding at $19.7B",
         "source": "Yahoo",
-        "url": "https://finnhub.io/api/news?id=b776a62385b1ac9b37b4e7b5bb247eebd7de2b26dbc3de0921738e5a3aaf8928",
-        "datetime": "2026-11-18T19:51:47"
+        "url": "https://finnhub.io/api/news?id=7571f738999d03e723c6bd002c6640c79ec07f69ea5c4bd327e807d708cba6d6",
+        "datetime": "2026-11-19T19:42:17"
       },
       {
         "ticker": "NVDA",
-        "headline": "'Sending a message': Nvidia signals more cautious stance on China after Huang's departure",
+        "headline": "Trump Discloses Up to $380,000 in Nvidia Buys, Calls Huang\u2019s Exit \u2018Such a Tragedy\u2019",
         "source": "Yahoo",
-        "url": "https://finnhub.io/api/news?id=1028cc4069fab0fcbed963b63b33403c273709bc2bb7ca71e66606d767d7d9d4",
-        "datetime": "2026-11-18T19:49:45"
+        "url": "https://finnhub.io/api/news?id=dff6f0b6d1dcce9325452d0088fd6ed65949392c659427ebcd9ae797a399fbff",
+        "datetime": "2026-11-19T19:22:08"
       }
     ],
     "TSLA": [
       {
         "ticker": "TSLA",
-        "headline": "Elon Musk deepfake nearly costs coinbase users $4.7 million",
+        "headline": "Trump's New Filing Reveals Nvidia, SpaceX And Tesla Purchases. White House Says He Didn't Direct Trades.",
         "source": "Yahoo",
-        "url": "https://finnhub.io/api/news?id=d2964476a6babbb0120df6e36bbfb6d001c3f6b041dd71069f814e75ef18491d",
-        "datetime": "2026-11-18T19:26:48"
+        "url": "https://finnhub.io/api/news?id=7e39c3eb9adb88e50e7faadaa5284d7934094ae8b6a43264ec16cbb53adefa30",
+        "datetime": "2026-11-19T19:03:57"
       },
       {
         "ticker": "TSLA",
-        "headline": "Egan-Jones Examines What the Tesla Roadster Demo Signals for Automakers",
+        "headline": "Tesla Stocks Rise as Musk Pledges More Output From Shanghai Plant",
         "source": "Yahoo",
-        "url": "https://finnhub.io/api/news?id=7c1c264f5d92a648611a3e8b251ee9dc707f785a294ec0922f8cf98f58a3086c",
-        "datetime": "2026-11-18T18:00:00"
+        "url": "https://finnhub.io/api/news?id=670f77ae7bd46c730200221956e0c1c93f2ba4daf56390875963498b60a67406",
+        "datetime": "2026-11-19T18:36:55"
       },
       {
         "ticker": "TSLA",
-        "headline": "Tesla Stock Is Still a High-Stakes Bet on the Future. Here\u2019s My Price Target",
+        "headline": "Can Tesla's Cash Cover $20 Billion Of Spending?",
         "source": "Yahoo",
-        "url": "https://finnhub.io/api/news?id=1a58d606bbbed16b13e21fe4a33e0df3e611ecaaa1962a5a23db7cbea93671ac",
-        "datetime": "2026-11-18T17:33:28"
+        "url": "https://finnhub.io/api/news?id=7556d2db5ea1b9ffb44ee07a7fa0a0edc570fc38ba4a70ca6d26c663cce8fa80",
+        "datetime": "2026-11-19T18:23:20"
       }
     ],
     "AMZN": [
       {
         "ticker": "AMZN",
-        "headline": "Data Center Backlash Hits Amazon Hardest in Ohio",
+        "headline": "Missed the Anthropic IPO? These 3 Stocks Give You Immediate Exposure.",
         "source": "Yahoo",
-        "url": "https://finnhub.io/api/news?id=6aed4f8536667957a72aeccd8225d89628f1432f84f686a7e8831a1a5ee06e94",
-        "datetime": "2026-11-18T19:51:16"
+        "url": "https://finnhub.io/api/news?id=8d4298e5aed40b19d3041b80423f61d8a4ebc2c2a5eaff98f497e3275d621c21",
+        "datetime": "2026-11-19T19:17:02"
       }
     ],
     "GOOGL": [
       {
         "ticker": "GOOGL",
-        "headline": "Anthropic Valuation Is 8.5 Times Next Year\u2019s Sales: Multiples More Like Microsoft, Alphabet Than Palantir, New Street Analyst Says",
+        "headline": "Missed the Anthropic IPO? These 3 Stocks Give You Immediate Exposure.",
         "source": "Yahoo",
-        "url": "https://finnhub.io/api/news?id=898336ca58d701ee9e2c393582ed2021ad52a8b67dcfa63291aea7e46632a8fa",
-        "datetime": "2026-11-18T18:16:12"
+        "url": "https://finnhub.io/api/news?id=8d4298e5aed40b19d3041b80423f61d8a4ebc2c2a5eaff98f497e3275d621c21",
+        "datetime": "2026-11-19T19:17:02"
       }
     ],
     "META": [
       {
         "ticker": "META",
-        "headline": "Warning for Meta Investors: Muse \u201cHas to Be 20x\u201d What It Is Now to Make an Impact, Says Dan Nathan",
+        "headline": "Meta's New AI Agent Raises Serious Privacy Questions for Investors",
         "source": "Yahoo",
-        "url": "https://finnhub.io/api/news?id=dd726fb7d8808b8b16b944dd205efc2f24c52573346b5c8ed9c9abec8f383532",
-        "datetime": "2026-11-18T17:53:15"
+        "url": "https://finnhub.io/api/news?id=e7a98a7d1eff3a850dc1017189654f8e36dacb3ca199bf0e7a8f4ad85d7ccc5e",
+        "datetime": "2026-11-19T18:45:22"
       },
       {
         "ticker": "META",
-        "headline": "Meta\u2019s hope to grow \u2018school communities\u2019 was really just a push to get teens hooked, internal docs show",
+        "headline": "Daniel Loeb's Meta Stock Bet Stands Out as Tiger Global Trims",
         "source": "Yahoo",
-        "url": "https://finnhub.io/api/news?id=5b2bd0f35acb7c431340dd3555e65914e45cb398183c50dddb60e1c10f00c7bb",
-        "datetime": "2026-11-18T17:47:03"
+        "url": "https://finnhub.io/api/news?id=de6f7402eea3cde7ab07fb76a4f68963254522f48def42613df8170e77cd8e4e",
+        "datetime": "2026-11-19T18:42:45"
       }
     ],
     "MU": [
       {
         "ticker": "MU",
-        "headline": "Micron Stocks Rise 1.7% as Nvidia's Supply Commitments Jump to $390 Billion",
+        "headline": "Nvidia, Intel, Micron and Dell Stocks Jump as Anthropic Massive IPO Sparks Rally",
         "source": "Yahoo",
-        "url": "https://finnhub.io/api/news?id=f80257d96eafe268934dc63ede2b65f200cee5b4bbddc02d118acf2802644512",
-        "datetime": "2026-11-18T19:44:53"
+        "url": "https://finnhub.io/api/news?id=38941db2475b28a54ad0b08d2f81e6e22eeae2d4fbad73182e1078bfb3228e4a",
+        "datetime": "2026-11-19T18:50:29"
       },
       {
         "ticker": "MU",
-        "headline": "Nvidia\u2019s Annual GPU Upgrades Are Changing the HBM Investment Outlook",
+        "headline": "Micron CEO Has a Stark Message for Memory Chip Buyers",
         "source": "Yahoo",
-        "url": "https://finnhub.io/api/news?id=2ecc64acd81f9649cb6c1045a31421e57244dc8f331f84702f23b2f6ed3c0875",
-        "datetime": "2026-11-18T19:39:50"
-      },
-      {
-        "ticker": "MU",
-        "headline": "Not Micron, Not Sandisk. This Is My Top Memory Stock for 2027.",
-        "source": "Yahoo",
-        "url": "https://finnhub.io/api/news?id=6a8c4082ad6a809e69fb3205768e79b12972184a86849d6f1518d345d1640a9c",
-        "datetime": "2026-11-18T19:21:02"
+        "url": "https://finnhub.io/api/news?id=a8702097c56b8fa74046b92279a73fa0473d4454412fb639548a0dddd3137810",
+        "datetime": "2026-11-19T18:47:31"
       }
     ],
     "SNDK": [
       {
         "ticker": "SNDK",
-        "headline": "Not Micron, Not Sandisk. This Is My Top Memory Stock for 2027.",
+        "headline": "Sandisk Stocks Jump 6.29% Hours Before 8-for-1 Split Takes Effect",
         "source": "Yahoo",
-        "url": "https://finnhub.io/api/news?id=6a8c4082ad6a809e69fb3205768e79b12972184a86849d6f1518d345d1640a9c",
-        "datetime": "2026-11-18T19:21:02"
+        "url": "https://finnhub.io/api/news?id=08b9f4752bd71c9e68cc934b4c3f8f61627ec0307abde7fb08b933b471d3e756",
+        "datetime": "2026-11-19T18:30:30"
       },
       {
         "ticker": "SNDK",
-        "headline": "Sandisk Leads Tech Stocks in Earnings Surprises Ahead of 8-for-1 Split",
+        "headline": "Seagate and Western Digital Climb 4% Despite Tech Profit-Taking After Anthropic\u2019s IPO Debut; SanDisk Edges Higher",
         "source": "Yahoo",
-        "url": "https://finnhub.io/api/news?id=c1cdd20d8b0421846eb1e8071c19d9dc64ad5fed67ab09367b2632cb22bf06cf",
-        "datetime": "2026-11-18T17:48:15"
+        "url": "https://finnhub.io/api/news?id=da7c848ec4f12fda68a553dc35cabe6953e590addd1bdd4594d084b21fbcdb4f",
+        "datetime": "2026-11-19T18:26:37"
       },
       {
         "ticker": "SNDK",
-        "headline": "Why Sandisk Stock Dropped Again",
+        "headline": "Sandisk Stock Is Worth a Third of What It Was in June. I'd Buy It Now.",
         "source": "Yahoo",
-        "url": "https://finnhub.io/api/news?id=203090c40e974e77f074ea028185f1c007339b7b53c249ae756fc68dd6e27819",
-        "datetime": "2026-11-18T17:02:55"
+        "url": "https://finnhub.io/api/news?id=41474cf5d29da0e67252ffcd36a346b3ede1934b22459aa0df475c4ed13b3682",
+        "datetime": "2026-11-19T18:16:02"
       }
     ],
     "DRAM": [
@@ -504,33 +503,26 @@
     "USAR": [
       {
         "ticker": "USAR",
-        "headline": "USA Rare Earth: Look At The Dilution Before Buying The Drop",
-        "source": "SeekingAlpha",
-        "url": "https://finnhub.io/api/news?id=2144495320342dceaf1ea58e8a8a82c49bcd25f19fac6586e6c94ecea3bbd474",
-        "datetime": "2026-11-18T13:12:43"
-      },
-      {
-        "ticker": "USAR",
-        "headline": "USA Rare Earth Has About $1.2 Billion in Cash, but Generated Just $3 Million in Quarterly Revenue. Which Matters More Right Now?",
+        "headline": "USA Rare Earth Stock Rises as Director Buys $3 Million of Shares",
         "source": "Yahoo",
-        "url": "https://finnhub.io/api/news?id=e86422e33240540a14cff5335efc5cce65ff3bd5167367159274eb4e1184649f",
-        "datetime": "2026-11-17T21:05:00"
-      },
-      {
-        "ticker": "USAR",
-        "headline": "How Risky Is USA Rare Earth Stock?",
-        "source": "Yahoo",
-        "url": "https://finnhub.io/api/news?id=bab764f1bafb0d554335b8eaa8bfadded30a34930809ed88059072178e8c8df3",
-        "datetime": "2026-11-17T19:28:47"
+        "url": "https://finnhub.io/api/news?id=b6ae3f73dd9737de6c0ed0981905db96ddda6b9d727e9a605763ddc22cf875fa",
+        "datetime": "2026-11-19T12:24:15"
       }
     ],
     "IREN": [
       {
         "ticker": "IREN",
-        "headline": "Why Is IREN Stock Surging Today?",
+        "headline": "CoreWeave, Nebius and IREN Stocks Rise Ahead of Anthropic Debut",
         "source": "Yahoo",
-        "url": "https://finnhub.io/api/news?id=688e0626049ac3e8bf5f3ad1af6b9174456c1fd43fc7892a0232161b5edac70f",
-        "datetime": "2026-11-18T12:24:07"
+        "url": "https://finnhub.io/api/news?id=466ce84299888e06ac1ddce3362b0f90bc08060409b7f1451bce49702600c4c5",
+        "datetime": "2026-11-19T11:07:32"
+      },
+      {
+        "ticker": "IREN",
+        "headline": "IREN, CoreWeave and Nebius Stock Prices Have Plunged More Than 60%. Here's What It Means for AI Investors",
+        "source": "Yahoo",
+        "url": "https://finnhub.io/api/news?id=f64f664e83da0021cc8d7403e35cc2fd1c098c18af7b715ed63a9d6a57a941e2",
+        "datetime": "2026-11-18T20:25:47"
       }
     ],
     "OUST": [
@@ -559,79 +551,72 @@
     "AMD": [
       {
         "ticker": "AMD",
-        "headline": "Supermicro Has an AI Bottleneck and Is Turning to AMD",
+        "headline": "Offshore yuan dip looks like a liquidity blip, not a trend shift",
         "source": "Yahoo",
-        "url": "https://finnhub.io/api/news?id=c0df3dfb1b14722e307ff7ef3f1e68bf8b84370ae7025c0f83445551d347ec0b",
-        "datetime": "2026-11-18T19:04:59"
+        "url": "https://finnhub.io/api/news?id=204e1b3db81f63571ad455ae5e081f481f4568e77a71d7b09278754a3a87db7e",
+        "datetime": "2026-11-19T19:54:25"
       },
       {
         "ticker": "AMD",
-        "headline": "AMD Stocks Rise 1.95% Premarket After Closing Taalas Deal for AI Inference Chips",
+        "headline": "AMD Is Still Up 125% This Year. Did Today Just Mark the Top for AMD Stock?",
         "source": "Yahoo",
-        "url": "https://finnhub.io/api/news?id=a11723639ee044ddc709488a3c756432278c5c264468e62a6a6212c2c9e0c56a",
-        "datetime": "2026-11-18T18:50:19"
+        "url": "https://finnhub.io/api/news?id=19d40f50a071ec70863e91c0b8c1ae3cd02975d8418c321f956112a3da551f1b",
+        "datetime": "2026-11-19T19:02:28"
       }
     ],
     "RKLB": [
       {
         "ticker": "RKLB",
-        "headline": "How To Structure Rocket Lab and Planet Labs as a Space Play Flywheel in a $40 Billion Addressable Market",
+        "headline": "Rocket Lab (RKLB) Stock Could Be Overvalued On Record Backlog Growth",
         "source": "Yahoo",
-        "url": "https://finnhub.io/api/news?id=23bd970539367e5e03a1379eb35e9eab8e1e10f4f14340ca6c9c5e8e90c6b74f",
-        "datetime": "2026-11-18T17:45:21"
+        "url": "https://finnhub.io/api/news?id=b56da9841a0834fef94a408521d0650d885ec8219a09a13c0db544b2faace0e3",
+        "datetime": "2026-11-19T18:16:56"
       },
       {
         "ticker": "RKLB",
-        "headline": "AST SpaceMobile Falls 5% After Jim Cramer Calls It \u2018a Very Hard Stock to Own\u2019; SpaceX Rises 3%, Rocket Lab Holds Steady",
+        "headline": "Jim Cramer Says Rocket Lab Has \u2018Gotten Too Cheap\u2019 Just After Its Electron Rocket Hit 100 Launches Faster Than Any Other Commercial Rocket",
         "source": "Yahoo",
-        "url": "https://finnhub.io/api/news?id=8823e49106adaa4036f1a50e4ba6585b16231706a8da37ed5d37054ffe7f2d99",
-        "datetime": "2026-11-18T15:57:51"
+        "url": "https://finnhub.io/api/news?id=7ad49ee7ee3e4632e90164cf79e6b892e5b875f83401efc480e4fae6137ce47c",
+        "datetime": "2026-11-19T16:34:34"
       },
       {
         "ticker": "RKLB",
-        "headline": "There Are 8 Billion Reasons to Buy Rocket Lab At $50",
+        "headline": "Rocket Lab Has 2 Big Opportunities Ahead. Either One Could Change the Stock\u2019s Trajectory",
         "source": "Yahoo",
-        "url": "https://finnhub.io/api/news?id=d6836e13ca421bdbcd641a6b2fca4304d1f66785304563274d12091929bde93d",
-        "datetime": "2026-11-18T13:45:45"
+        "url": "https://finnhub.io/api/news?id=54a6f51f0ab7086ecbc37c1adf17082f9bbe51760e286e4f98c17cee0fbbe47a",
+        "datetime": "2026-11-19T16:34:26"
       }
     ],
     "PLTR": [
       {
         "ticker": "PLTR",
-        "headline": "Anthropic Valuation Is 8.5 Times Next Year\u2019s Sales: Multiples More Like Microsoft, Alphabet Than Palantir, New Street Analyst Says",
+        "headline": "How Does Palantir Technologies (PLTR) FedStart Milestone Change Its Federal AI Case?",
         "source": "Yahoo",
-        "url": "https://finnhub.io/api/news?id=898336ca58d701ee9e2c393582ed2021ad52a8b67dcfa63291aea7e46632a8fa",
-        "datetime": "2026-11-18T18:16:12"
+        "url": "https://finnhub.io/api/news?id=7408ecd46a6954c3d1fe6d2c82ffe8b17de91312ef3fbb3f96ec69f5806d5a1e",
+        "datetime": "2026-11-19T19:11:35"
       },
       {
         "ticker": "PLTR",
-        "headline": "How NHS Contract Extension Will Impact Palantir Stock Investors",
+        "headline": "Why Palantir Stock is Jumping Today",
         "source": "Yahoo",
-        "url": "https://finnhub.io/api/news?id=85c0e3da39a9e541cbbcad17cfa22ed49c3b96fac51a9299b09eaef900007e19",
-        "datetime": "2026-11-18T16:10:07"
+        "url": "https://finnhub.io/api/news?id=5e9a0fdfc31d5105f9d90e9f90eb02c233f9f213761f669cc94b458e570b7b7c",
+        "datetime": "2026-11-19T18:50:46"
       },
       {
         "ticker": "PLTR",
-        "headline": "Here\u2019s Why Palantir Cracked the Best Blue Chip Stocks to Buy and Hold for Three Years List",
+        "headline": "Arista Networks vs. Palantir Technologies: Which Technology Stock Is a Better Buy for 2027?",
         "source": "Yahoo",
-        "url": "https://finnhub.io/api/news?id=e4b6fe4a39c2cec7318fe91f78d5836f39c1996a6710a2b600d66fa27d605359",
-        "datetime": "2026-11-18T15:35:53"
+        "url": "https://finnhub.io/api/news?id=8777a96c24405c4158d5572b9da24008f5e62de01e8fd590e6ed3f909e12db54",
+        "datetime": "2026-11-19T18:33:02"
       }
     ],
     "MRVL": [
       {
         "ticker": "MRVL",
-        "headline": "Credo Technology Stock Jumps After Reaching Major Patent Deal With Marvell",
+        "headline": "Broadcom\u2019s $13.67B Quarterly FCF Beats Marvell\u2019s Scaling Story, Plain and Simple",
         "source": "Yahoo",
-        "url": "https://finnhub.io/api/news?id=df2faa373f7135912d318da0da7b554f5ffb959595df559bdfc48eb812cc6730",
-        "datetime": "2026-11-18T19:52:23"
-      },
-      {
-        "ticker": "MRVL",
-        "headline": "Credo Stocks Rise 3.15% Premarket After Settling AEC Patent Fight With Marvell",
-        "source": "Yahoo",
-        "url": "https://finnhub.io/api/news?id=1269297af93fc853db502442dab20128581d99d66bec69c9995c35bda3e971f9",
-        "datetime": "2026-11-18T19:04:50"
+        "url": "https://finnhub.io/api/news?id=45e35d0b9be95c38c405e5c775870df25d5850049834f1a2869fd3aea9978061",
+        "datetime": "2026-11-19T15:45:36"
       }
     ]
   }
